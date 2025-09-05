@@ -10,6 +10,10 @@
 #include "hmm/internal/macros.hpp"
 #include "hmm/internal/raw-hash-map.hpp"
 
+#if HMM_HAS_CXX_17
+#include <memory_resource>
+#endif
+
 namespace hmm {
 
 template <typename K, typename V>
@@ -117,6 +121,17 @@ struct HMM_NODISCARD MapPolicy {
         std::allocator_traits<Alloc>::destroy(alloc, ptr);
     }
 };
+
+#if HMM_HAS_CXX_17
+namespace pmr {
+template <class Key, class Value, class Hash = Hasher<Key>,
+          class Eq = std::equal_to<Key>>
+using flat_hash_map =
+    ::hmm::flat_hash_map<Key, Value, Hash, Eq,
+                         std::pmr::polymorphic_allocator<
+                             typename MapPolicy<Key, Value>::value_type>>;
+}
+#endif
 
 }  // namespace hmm
 

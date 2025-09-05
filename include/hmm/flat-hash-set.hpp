@@ -10,6 +10,10 @@
 #include "hmm/internal/macros.hpp"
 #include "hmm/internal/raw-hash-set.hpp"
 
+#if HMM_HAS_CXX_17
+#include <memory_resource>
+#endif
+
 namespace hmm {
 
 template <typename T>
@@ -17,8 +21,7 @@ struct HMM_NODISCARD SetPolicy;
 
 template <class Contained, class Hash = Hasher<Contained>,
           class Eq = std::equal_to<Contained>,
-          class Alloc =
-              typename std::allocator<typename SetPolicy<Contained>::key_type>>
+          class Alloc = std::allocator<typename SetPolicy<Contained>::key_type>>
 class flat_hash_set
     : detail::raw_hash_set<SetPolicy<Contained>, Hash, Eq, Alloc> {
     using Base = flat_hash_set::raw_hash_set;
@@ -106,6 +109,16 @@ struct HMM_NODISCARD SetPolicy {
         std::allocator_traits<Alloc>::destroy(alloc, ptr);
     }
 };
+
+#if HMM_HAS_CXX_17
+namespace pmr {
+template <class Contained, class Hash = Hasher<Contained>,
+          class Eq = std::equal_to<Contained>>
+using flat_hash_set = ::hmm::flat_hash_set<
+    Contained, Hash, Eq,
+    std::pmr::polymorphic_allocator<typename SetPolicy<Contained>::key_type>>;
+}
+#endif
 
 }  // namespace hmm
 
