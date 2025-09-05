@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <initializer_list>
 #include <memory>
+#include <utility>
 
 #include "hmm/internal/detail.hpp"
 #include "hmm/internal/macros.hpp"
@@ -53,14 +54,14 @@ class raw_hash_set {
             return slot_;
         }
 
-        HMM_NODISCARD HMM_CONSTEXPR_14 iterator_impl& operator++() {
+        HMM_CONSTEXPR_14 iterator_impl& operator++() {
             ++ctrl_;
             ++slot_;
             skip_empty_or_deleted();
             return *this;
         }
 
-        HMM_NODISCARD HMM_CONSTEXPR_14 iterator_impl operator++(int) {
+        HMM_CONSTEXPR_14 iterator_impl operator++(int) {
             auto tmp = *this;
             ++(*this);
             return tmp;
@@ -120,14 +121,14 @@ class raw_hash_set {
             return slot_;
         }
 
-        HMM_NODISCARD HMM_CONSTEXPR_14 const_iterator_impl& operator++() {
+        HMM_CONSTEXPR_14 const_iterator_impl& operator++() {
             ++ctrl_;
             ++slot_;
             skip_empty_or_deleted();
             return *this;
         }
 
-        HMM_NODISCARD HMM_CONSTEXPR_14 const_iterator_impl operator++(int) {
+        HMM_CONSTEXPR_14 const_iterator_impl operator++(int) {
             auto tmp = *this;
             ++(*this);
             return tmp;
@@ -188,11 +189,7 @@ class raw_hash_set {
         : members_(Hash{}, Eq{}, alloc, CtrlAllocator{}) {}
 
     HMM_CONSTEXPR_20 ~raw_hash_set() {
-        if (!slots_) {
-            return;
-        }
-        clear_elements();
-        deallocate_storage(capacity());
+        clear_and_deallocate();
     }
 
     HMM_CONSTEXPR_20 raw_hash_set(raw_hash_set&& other) noexcept
@@ -202,6 +199,9 @@ class raw_hash_set {
           capacity_(std::exchange(other.capacity_, 0)),
           size_(std::exchange(other.size_, 0)) {}
 
+    HMM_CONSTEXPR_20 raw_hash_set(const raw_hash_set& other) noexcept
+        : raw_hash_set(other.begin(), other.end()) {}
+
     HMM_CONSTEXPR_20 raw_hash_set& operator=(raw_hash_set&& other) noexcept {
         if (this != &other) {
             clear_and_deallocate();
@@ -210,6 +210,15 @@ class raw_hash_set {
             slots_ = std::exchange(other.slots_, nullptr);
             capacity_ = std::exchange(other.capacity_, 0);
             size_ = std::exchange(other.size_, 0);
+        }
+        return *this;
+    }
+
+    HMM_CONSTEXPR_20 raw_hash_set& operator=(
+        const raw_hash_set& other) noexcept {
+        if (this != &other) {
+            clear();
+            insert(other.begin(), other.end());
         }
         return *this;
     }
@@ -417,6 +426,17 @@ class raw_hash_set {
 
     HMM_CONSTEXPR_20 void insert(value_type&& value) {
         emplace(std::move(value));
+    }
+
+    HMM_CONSTEXPR_20 void insert(std::initializer_list<value_type> values) {
+        insert(values.begin(), values.end());
+    }
+
+    template <class Iter, class Sentinel>
+    HMM_CONSTEXPR_20 void insert(Iter begin, Sentinel end) {
+        for (; begin != end; ++begin) {
+            emplace(*begin);
+        }
     }
 
     template <typename... Args>

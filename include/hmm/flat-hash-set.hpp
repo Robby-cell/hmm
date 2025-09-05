@@ -45,8 +45,7 @@ class flat_hash_set : detail::raw_hash_set<detail::MapPolicy<Contained, void>,
         const allocator_type& alloc = allocator_type())
         : Base(begin, end, alloc) {}
 
-    HMM_CONSTEXPR_20 explicit flat_hash_set(
-        const allocator_type& alloc = allocator_type())
+    HMM_CONSTEXPR_20 explicit flat_hash_set(const allocator_type& alloc)
         : Base(alloc) {}
 
     using Base::begin;

@@ -52,6 +52,7 @@ class raw_hash_map : public raw_hash_set<Policy, Hash, Eq, Alloc> {
     using Base::capacity;
     using Base::cbegin;
     using Base::cend;
+    using Base::clear;
     using Base::contains;
     using Base::emplace;
     using Base::end;
