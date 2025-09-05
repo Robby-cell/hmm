@@ -4,6 +4,7 @@
 #include <functional>
 #include <initializer_list>
 #include <memory>
+#include <utility>
 
 #include "hmm/hasher.hpp"
 #include "hmm/internal/macros.hpp"
