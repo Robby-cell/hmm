@@ -2,10 +2,12 @@
 #define HMM_INTERNAL_RAW_HASH_SET_HPP
 
 #include <cstdint>
+#include <initializer_list>
 #include <memory>
 
 #include "hmm/internal/detail.hpp"
 #include "hmm/internal/macros.hpp"
+#include "macros.hpp"
 
 namespace hmm {
 namespace detail {
@@ -51,14 +53,14 @@ class raw_hash_set {
             return slot_;
         }
 
-        HMM_NODISCARD constexpr iterator_impl& operator++() {
+        HMM_NODISCARD HMM_CONSTEXPR_14 iterator_impl& operator++() {
             ++ctrl_;
             ++slot_;
             skip_empty_or_deleted();
             return *this;
         }
 
-        HMM_NODISCARD constexpr iterator_impl operator++(int) {
+        HMM_NODISCARD HMM_CONSTEXPR_14 iterator_impl operator++(int) {
             auto tmp = *this;
             ++(*this);
             return tmp;
@@ -118,14 +120,14 @@ class raw_hash_set {
             return slot_;
         }
 
-        HMM_NODISCARD constexpr const_iterator_impl& operator++() {
+        HMM_NODISCARD HMM_CONSTEXPR_14 const_iterator_impl& operator++() {
             ++ctrl_;
             ++slot_;
             skip_empty_or_deleted();
             return *this;
         }
 
-        HMM_NODISCARD constexpr const_iterator_impl operator++(int) {
+        HMM_NODISCARD HMM_CONSTEXPR_14 const_iterator_impl operator++(int) {
             auto tmp = *this;
             ++(*this);
             return tmp;
@@ -167,8 +169,23 @@ class raw_hash_set {
 
     HMM_CONSTEXPR_20 raw_hash_set() = default;
 
+    HMM_CONSTEXPR_20 raw_hash_set(
+        std::initializer_list<value_type> initial,
+        const allocator_type& alloc = allocator_type())
+        : raw_hash_set(initial.begin(), initial.end(), alloc) {}
+
+    template <class Iter, class Sentinel>
+    HMM_CONSTEXPR_20 raw_hash_set(
+        Iter begin, Sentinel end,
+        const allocator_type& alloc = allocator_type())
+        : raw_hash_set(alloc) {
+        for (; begin != end; ++begin) {
+            insert(*begin);
+        }
+    }
+
     HMM_CONSTEXPR_20 explicit raw_hash_set(const allocator_type& alloc)
-        : members_(Hash{}, Eq{}, alloc) {}
+        : members_(Hash{}, Eq{}, alloc, CtrlAllocator{}) {}
 
     HMM_CONSTEXPR_20 ~raw_hash_set() {
         if (!slots_) {
@@ -353,10 +370,17 @@ class raw_hash_set {
 
     HMM_CONSTEXPR_20 void rehash_and_grow() {
         auto old_capacity = capacity();
-        auto old_ctrl = ctrl_;
-        auto old_slots = slots_;
-
         const std::size_t new_cap = (old_capacity == 0) ? 16 : old_capacity * 2;
+        return rehash_and_grow(new_cap);
+    }
+
+    HMM_CONSTEXPR_20 void rehash_and_grow(const std::size_t new_cap) {
+        HMM_ASSERT(new_cap > capacity());
+
+        const auto old_capacity = capacity();
+        const auto old_ctrl = ctrl_;
+        const auto old_slots = slots_;
+
         allocate_storage(new_cap);
         std::fill(ctrl_, ctrl_ + capacity(), slots::kEmpty);
 
@@ -379,6 +403,12 @@ class raw_hash_set {
         }
 
         deallocate_storage(old_ctrl, old_slots, old_capacity);
+    }
+
+    HMM_CONSTEXPR_20 void reserve(const std::size_t capacity) {
+        if (capacity > this->capacity()) {
+            rehash_and_grow(capacity);
+        }
     }
 
     HMM_CONSTEXPR_20 void insert(const value_type& value) {

@@ -2,12 +2,14 @@
 #define HMM_FLAT_HASH_SET_HPP
 
 #include <functional>
+#include <initializer_list>
 #include <memory>
 
 #include "hmm/hasher.hpp"
 #include "hmm/internal/macros.hpp"
 #include "hmm/internal/map-policy.hpp"
 #include "hmm/internal/raw-hash-set.hpp"
+#include "internal/macros.hpp"
 
 namespace hmm {
 
@@ -26,12 +28,25 @@ class flat_hash_set : detail::raw_hash_set<detail::MapPolicy<Contained, void>,
     using size_type = std::size_t;
     using hasher = Hash;
     using key_equal = Eq;
-    using allocator_type = Alloc;
+    using allocator_type = typename Base::allocator_type;
     using iterator = typename Base::iterator;
     using const_iterator = typename Base::const_iterator;
 
     HMM_CONSTEXPR_20 flat_hash_set() = default;
-    HMM_CONSTEXPR_20 explicit flat_hash_set(const allocator_type& alloc)
+
+    HMM_CONSTEXPR_20 flat_hash_set(
+        std::initializer_list<value_type> initial,
+        const allocator_type& alloc = allocator_type())
+        : Base(initial, alloc) {}
+
+    template <class Iter, class Sentinel>
+    HMM_CONSTEXPR_20 flat_hash_set(
+        Iter begin, Sentinel end,
+        const allocator_type& alloc = allocator_type())
+        : Base(begin, end, alloc) {}
+
+    HMM_CONSTEXPR_20 explicit flat_hash_set(
+        const allocator_type& alloc = allocator_type())
         : Base(alloc) {}
 
     using Base::begin;
@@ -46,6 +61,7 @@ class flat_hash_set : detail::raw_hash_set<detail::MapPolicy<Contained, void>,
     using Base::erase;
     using Base::find;
     using Base::insert;
+    using Base::reserve;
     using Base::size;
 };
 

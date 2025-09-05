@@ -2,10 +2,12 @@
 #define HMM_INTERNAL_RAW_HASH_MAP_HPP
 
 #include <functional>
+#include <initializer_list>
 #include <stdexcept>
 
 #include "hmm/internal/macros.hpp"
 #include "hmm/internal/raw-hash-set.hpp"
+#include "macros.hpp"
 
 namespace hmm {
 namespace detail {
@@ -20,7 +22,9 @@ class raw_hash_map : public raw_hash_set<Policy, Hash, Eq, Alloc> {
     using typename Base::key_type;
     using typename Base::value_type;
     using mapped_type = typename Policy::mapped_type;
+    using typename Base::allocator_type;
     using typename Base::pointer;
+    using typename Base::policy_type;
 
     using typename Base::Control;
     using typename Base::Slot;
@@ -29,7 +33,20 @@ class raw_hash_map : public raw_hash_set<Policy, Hash, Eq, Alloc> {
     using typename Base::iterator;
 
     HMM_CONSTEXPR_20 raw_hash_map() = default;
-    HMM_CONSTEXPR_20 explicit raw_hash_map(const Alloc& alloc) : Base(alloc) {}
+
+    HMM_CONSTEXPR_20 raw_hash_map(
+        std::initializer_list<value_type> initial,
+        const allocator_type& alloc = allocator_type())
+        : Base(initial, alloc) {}
+
+    template <class Iter, class Sentinel>
+    HMM_CONSTEXPR_20 raw_hash_map(
+        Iter begin, Sentinel end,
+        const allocator_type& alloc = allocator_type())
+        : Base(begin, end, alloc) {}
+
+    HMM_CONSTEXPR_20 explicit raw_hash_map(const allocator_type& alloc)
+        : Base(alloc) {}
 
     using Base::begin;
     using Base::capacity;
@@ -40,6 +57,7 @@ class raw_hash_map : public raw_hash_set<Policy, Hash, Eq, Alloc> {
     using Base::end;
     using Base::find;
     using Base::insert;
+    using Base::reserve;
     using Base::size;
 
     HMM_CONSTEXPR_20 iterator erase(const_iterator pos) {

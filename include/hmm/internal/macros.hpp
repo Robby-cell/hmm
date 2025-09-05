@@ -1,6 +1,8 @@
 #ifndef HMM_INTERNAL_MACROS_HPP
 #define HMM_INTERNAL_MACROS_HPP
 
+#include <cassert>
+
 #ifdef _MSVC_LANG
 #define HMM_STD_CPP _MSVC_LANG
 #else
@@ -40,5 +42,11 @@
 #endif
 
 #define HMM_NODISCARD [[nodiscard]]
+
+#ifdef HMM_NO_CHECKS
+#define HMM_ASSERT(...)
+#else
+#define HMM_ASSERT(...) assert(__VA_ARGS__)
+#endif
 
 #endif  // HMM_INTERNAL_MACROS_HPP

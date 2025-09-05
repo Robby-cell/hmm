@@ -2,12 +2,14 @@
 #define HMM_HASH_MAP_HPP
 
 #include <functional>
+#include <initializer_list>
 #include <memory>
 
 #include "hmm/hasher.hpp"
 #include "hmm/internal/macros.hpp"
 #include "hmm/internal/map-policy.hpp"
 #include "hmm/internal/raw-hash-map.hpp"
+#include "internal/macros.hpp"
 
 namespace hmm {
 
@@ -27,13 +29,25 @@ class flat_hash_map : public detail::raw_hash_map<detail::MapPolicy<Key, Value>,
     using size_type = std::size_t;
     using hasher = Hash;
     using key_equal = KeyEqual;
-    using allocator_type = Alloc;
+    using allocator_type = typename Base::allocator_type;
     using iterator = typename Base::iterator;
     using const_iterator = typename Base::const_iterator;
 
     HMM_CONSTEXPR_20 flat_hash_map() = default;
-    HMM_CONSTEXPR_20 explicit flat_hash_map(const allocator_type& alloc)
-        : Base(alloc) {}
+
+    HMM_CONSTEXPR_20 flat_hash_map(
+        std::initializer_list<value_type> initial,
+        const allocator_type& alloc = allocator_type())
+        : Base(initial, alloc) {}
+
+    template <class Iter, class Sentinel>
+    HMM_CONSTEXPR_20 flat_hash_map(
+        Iter begin, Sentinel end,
+        const allocator_type& alloc = allocator_type())
+        : Base(begin, end, alloc) {}
+
+    HMM_CONSTEXPR_20
+    explicit flat_hash_map(const allocator_type& alloc) : Base(alloc) {}
 
     using Base::begin;
     using Base::capacity;
@@ -49,6 +63,7 @@ class flat_hash_map : public detail::raw_hash_map<detail::MapPolicy<Key, Value>,
     using Base::operator[];
     using Base::at;
     using Base::contains;
+    using Base::reserve;
 };
 
 }  // namespace hmm
