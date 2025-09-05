@@ -8,7 +8,6 @@
 
 #include "hmm/internal/detail.hpp"
 #include "hmm/internal/macros.hpp"
-#include "macros.hpp"
 
 namespace hmm {
 namespace detail {
@@ -17,25 +16,32 @@ template <class Policy, class Hash, class Eq, class Alloc>
 class raw_hash_set {
    protected:
     using policy_type = Policy;
+    using hasher_type = Hash;
+    using key_equal = Eq;
     using key_type = typename policy_type::key_type;
     using value_type = typename policy_type::value_type;
-    using allocator_type = Alloc;
-    using traits = std::allocator_traits<allocator_type>;
-    using pointer = typename traits::pointer;
+    using size_type = std::size_t;
+
+    using slot_type = typename policy_type::slot_type;
+    using slot_allocator =
+        typename std::allocator_traits<Alloc>::template rebind_alloc<slot_type>;
+    using slot_traits = std::allocator_traits<slot_allocator>;
+    using pointer = typename slot_traits::pointer;
+    using allocator_type = slot_allocator;
 
     using Control = std::int8_t;
-    using Slot = value_type;
+    using Slot = slot_type;
 
     template <typename Value>
     class HMM_NODISCARD iterator_impl {
-        friend class raw_hash_set;
+        friend raw_hash_set;
 
        public:
         using iterator_category = std::forward_iterator_tag;
-        using value_type = Value;
+        using value_type = typename raw_hash_set::value_type;
         using difference_type = std::ptrdiff_t;
-        using pointer = Value*;
-        using reference = Value&;
+        using pointer = value_type*;
+        using reference = value_type&;
 
         constexpr iterator_impl() = default;
 
@@ -48,10 +54,11 @@ class raw_hash_set {
               end_ctrl_(other.end_ctrl_) {}
 
         HMM_NODISCARD constexpr reference operator*() const {
-            return *slot_;
+            return policy_type::value_from_slot(*slot_);
         }
-        HMM_NODISCARD constexpr Slot* operator->() const {
-            return slot_;
+
+        HMM_NODISCARD constexpr pointer operator->() const {
+            return std::addressof(operator*());
         }
 
         HMM_CONSTEXPR_14 iterator_impl& operator++() {
@@ -94,31 +101,29 @@ class raw_hash_set {
 
     template <typename Value>
     class HMM_NODISCARD const_iterator_impl {
-        friend class raw_hash_set;
+        friend raw_hash_set;
 
        public:
         using iterator_category = std::forward_iterator_tag;
-        using value_type = Value;
+        using value_type = const typename raw_hash_set::value_type;
         using difference_type = std::ptrdiff_t;
-        using pointer = const Value*;
-        using reference = const Value&;
+        using pointer = const value_type*;
+        using reference = const value_type&;
 
         constexpr const_iterator_impl() = default;
 
-        template <typename OtherValue,
-                  typename = std::enable_if_t<std::is_const_v<Value> &&
-                                              !std::is_const_v<OtherValue>>>
         constexpr const_iterator_impl(
-            const const_iterator_impl<OtherValue>& other)
+            const iterator_impl<typename raw_hash_set::value_type>& other)
             : ctrl_(other.ctrl_),
               slot_(other.slot_),
               end_ctrl_(other.end_ctrl_) {}
 
         HMM_NODISCARD constexpr reference operator*() const {
-            return *slot_;
+            return policy_type::value_from_slot(*slot_);
         }
-        HMM_NODISCARD constexpr const Slot* operator->() const {
-            return slot_;
+
+        HMM_NODISCARD constexpr pointer operator->() const {
+            return std::addressof(operator*());
         }
 
         HMM_CONSTEXPR_14 const_iterator_impl& operator++() {
@@ -144,9 +149,11 @@ class raw_hash_set {
         }
 
        private:
-        constexpr const_iterator_impl(Control* ctrl, Slot* slot,
+        constexpr const_iterator_impl(Control* ctrl, const Slot* slot,
                                       Control* end_ctrl)
-            : ctrl_(ctrl), slot_(slot), end_ctrl_(end_ctrl) {}
+            : ctrl_(ctrl),
+              slot_(const_cast<Slot*>(slot)),
+              end_ctrl_(end_ctrl) {}
 
         HMM_CONSTEXPR_14 void skip_empty_or_deleted() {
             while (ctrl_ != end_ctrl_ && *ctrl_ < 0) {
@@ -172,20 +179,20 @@ class raw_hash_set {
 
     HMM_CONSTEXPR_20 raw_hash_set(
         std::initializer_list<value_type> initial,
-        const allocator_type& alloc = allocator_type())
+        const slot_allocator& alloc = slot_allocator())
         : raw_hash_set(initial.begin(), initial.end(), alloc) {}
 
     template <class Iter, class Sentinel>
     HMM_CONSTEXPR_20 raw_hash_set(
         Iter begin, Sentinel end,
-        const allocator_type& alloc = allocator_type())
+        const slot_allocator& alloc = slot_allocator())
         : raw_hash_set(alloc) {
         for (; begin != end; ++begin) {
             insert(*begin);
         }
     }
 
-    HMM_CONSTEXPR_20 explicit raw_hash_set(const allocator_type& alloc)
+    HMM_CONSTEXPR_20 explicit raw_hash_set(const slot_allocator& alloc)
         : members_(Hash{}, Eq{}, alloc, CtrlAllocator{}) {}
 
     HMM_CONSTEXPR_20 ~raw_hash_set() {
@@ -352,7 +359,7 @@ class raw_hash_set {
 
     HMM_NODISCARD HMM_CONSTEXPR_20 iterator erase(const_iterator cit) {
         std::size_t index = cit.slot_ - slots_;
-        traits::destroy(alloc(), &slots_[index]);
+        policy_type::destroy(slot_alloc(), &slots_[index]);
         ctrl_[index] = slots::kDeleted;
         --size_;
         auto it =
@@ -362,7 +369,7 @@ class raw_hash_set {
     }
 
     HMM_CONSTEXPR_20 void erase_at(std::size_t index) {
-        traits::destroy(alloc(), &slots_[index]);
+        policy_type::destroy(slot_alloc(), &slots_[index]);
         ctrl_[index] = slots::kDeleted;
         --size_;
     }
@@ -404,9 +411,9 @@ class raw_hash_set {
                 const auto& key = policy_type::key(old_slots[i]);
                 auto info = find_or_prepare_insert(key);
                 ctrl_[info.index] = H1(hasher()(key));
-                traits::construct(alloc(), &slots_[info.index],
-                                  std::move(old_slots[i]));
-                traits::destroy(alloc(), &old_slots[i]);
+                policy_type::construct(slot_alloc(), &slots_[info.index],
+                                       std::move(old_slots[i]));
+                policy_type::destroy(slot_alloc(), &old_slots[i]);
                 ++size_;
             }
         }
@@ -444,7 +451,7 @@ class raw_hash_set {
         if (needs_resize()) {
             rehash_and_grow();
         }
-        value_type tmp(std::forward<Args>(args)...);
+        slot_type tmp(std::forward<Args>(args)...);
         auto info = find_or_prepare_insert(policy_type::key(tmp));
         if (info.found) {
             return {iterator(ctrl_ + info.index, slots_ + info.index,
@@ -454,7 +461,8 @@ class raw_hash_set {
         const auto& key = policy_type::key(tmp);
         const auto full_hash = hasher()(key);
         ctrl_[info.index] = H1(full_hash);
-        traits::construct(alloc(), &slots_[info.index], std::move(tmp));
+        policy_type::construct(slot_alloc(), &slots_[info.index],
+                               std::move(tmp));
         ++size_;
         return {iterator(ctrl_ + info.index, slots_ + info.index,
                          ctrl_ + capacity()),
@@ -474,7 +482,7 @@ class raw_hash_set {
         return size_;
     }
 
-    using CtrlAllocator = typename traits::template rebind_alloc<Control>;
+    using CtrlAllocator = typename slot_traits::template rebind_alloc<Control>;
     using CtrlTraits = std::allocator_traits<CtrlAllocator>;
 
     HMM_NODISCARD constexpr Hash& hasher() noexcept {
@@ -483,8 +491,8 @@ class raw_hash_set {
     HMM_NODISCARD constexpr Eq& equal() noexcept {
         return members_.template get<1, Eq>();
     }
-    HMM_NODISCARD constexpr allocator_type& alloc() noexcept {
-        return members_.template get<2, allocator_type>();
+    HMM_NODISCARD constexpr slot_allocator& slot_alloc() noexcept {
+        return members_.template get<2, slot_allocator>();
     }
     HMM_NODISCARD constexpr CtrlAllocator& ctrl_alloc() noexcept {
         return members_.template get<3, CtrlAllocator>();
@@ -495,8 +503,8 @@ class raw_hash_set {
     HMM_NODISCARD constexpr const Eq& equal() const noexcept {
         return members_.template get<1, Eq>();
     }
-    HMM_NODISCARD constexpr const allocator_type& alloc() const noexcept {
-        return members_.template get<2, allocator_type>();
+    HMM_NODISCARD constexpr const slot_allocator& slot_alloc() const noexcept {
+        return members_.template get<2, slot_allocator>();
     }
     HMM_NODISCARD constexpr const CtrlAllocator& ctrl_alloc() const noexcept {
         return members_.template get<3, CtrlAllocator>();
@@ -509,7 +517,7 @@ class raw_hash_set {
     HMM_CONSTEXPR_20 void allocate_storage(std::size_t cap) {
         auto&& control_allocator = ctrl_alloc();
         ctrl_ = CtrlTraits::allocate(control_allocator, cap);
-        slots_ = traits::allocate(alloc(), cap);
+        slots_ = slot_traits::allocate(slot_alloc(), cap);
         capacity_ = cap;
     }
 
@@ -521,13 +529,13 @@ class raw_hash_set {
                                              std::size_t cap) {
         auto&& control_allocator = ctrl_alloc();
         CtrlTraits::deallocate(control_allocator, ctrl, cap);
-        traits::deallocate(alloc(), slots, cap);
+        slot_traits::deallocate(slot_alloc(), slots, cap);
     }
 
     HMM_CONSTEXPR_20 void clear_elements() {
         for (std::size_t i = 0; i < capacity(); ++i) {
             if (ctrl_[i] >= 0) {
-                traits::destroy(alloc(), &slots_[i]);
+                policy_type::destroy(slot_alloc(), &slots_[i]);
             }
         }
     }
@@ -544,7 +552,7 @@ class raw_hash_set {
         size_ = 0;
     }
 
-    CompressedTuple<Hash, Eq, allocator_type, CtrlAllocator> members_;
+    CompressedTuple<Hash, Eq, slot_allocator, CtrlAllocator> members_;
     Control* ctrl_{nullptr};
     Slot* slots_{nullptr};
     std::size_t capacity_{0};

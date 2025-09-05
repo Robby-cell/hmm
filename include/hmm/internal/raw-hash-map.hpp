@@ -16,15 +16,22 @@ template <class Policy, class Hash = std::hash<typename Policy::key_type>,
           class Eq = std::equal_to<typename Policy::key_type>,
           class Alloc = std::allocator<typename Policy::value_type>>
 class raw_hash_map : public raw_hash_set<Policy, Hash, Eq, Alloc> {
-    using Base = raw_hash_set<Policy, Hash, Eq, Alloc>;
+    using Base = raw_hash_map::raw_hash_set;
 
    protected:
-    using typename Base::key_type;
-    using typename Base::value_type;
+    using policy_type = typename Base::policy_type;
+    using hasher_type = typename Base::hasher_type;
+    using key_equal = typename Base::key_equal;
+    using key_type = typename Base::key_type;
+    using value_type = typename Base::value_type;
     using mapped_type = typename Policy::mapped_type;
-    using typename Base::allocator_type;
-    using typename Base::pointer;
-    using typename Base::policy_type;
+    using size_type = typename Base::size_type;
+
+    using slot_type = typename Base::slot_type;
+    using slot_allocator = typename Base::slot_allocator;
+    using slot_traits = typename Base::slot_traits;
+    using pointer = typename Base::pointer;
+    using allocator_type = typename Base::allocator_type;
 
     using typename Base::Control;
     using typename Base::Slot;
@@ -76,18 +83,18 @@ class raw_hash_map : public raw_hash_set<Policy, Hash, Eq, Alloc> {
         }
         auto info = Base::find_or_prepare_insert(key);
         if (info.found) {
-            return Base::slots_ptr()[info.index].second;
+            return policy_type::value(Base::slots_ptr()[info.index]);
         }
 
         const auto full_hash = Base::hasher()(key);
         Base::ctrl_ptr()[info.index] = H1(full_hash);
 
-        using traits = typename Base::traits;
-        traits::construct(Base::alloc(), &Base::slots_ptr()[info.index],
-                          std::piecewise_construct, std::forward_as_tuple(key),
-                          std::tuple<>());
+        policy_type::construct(Base::slot_alloc(),
+                               &Base::slots_ptr()[info.index],
+                               std::piecewise_construct,
+                               std::forward_as_tuple(key), std::tuple<>());
         ++Base::size_ref();
-        return Base::slots_ptr()[info.index].second;
+        return policy_type::value(Base::slots_ptr()[info.index]);
     }
 
     HMM_NODISCARD HMM_CONSTEXPR_20 mapped_type& at(const key_type& key) {
