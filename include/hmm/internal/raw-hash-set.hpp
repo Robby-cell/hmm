@@ -259,7 +259,7 @@ class raw_hash_set {
                               ctrl_ + capacity());
     }
 
-    HMM_NODISCARD constexpr std::size_t size() const noexcept {
+    HMM_NODISCARD constexpr size_type size() const noexcept {
         return size_;
     }
 
@@ -267,7 +267,7 @@ class raw_hash_set {
         return size_ == 0;
     }
 
-    HMM_NODISCARD constexpr std::size_t capacity() const noexcept {
+    HMM_NODISCARD constexpr size_type capacity() const noexcept {
         return capacity_;
     }
 
@@ -368,14 +368,14 @@ class raw_hash_set {
         return it;
     }
 
-    HMM_CONSTEXPR_20 void erase_at(std::size_t index) {
+    HMM_CONSTEXPR_20 void erase_at(size_type index) {
         policy_type::destroy(slot_alloc(), &slots_[index]);
         ctrl_[index] = slots::kDeleted;
         --size_;
     }
 
-    HMM_NODISCARD HMM_CONSTEXPR_20 std::size_t erase_element(
-        const key_type& key) {
+    HMM_NODISCARD HMM_CONSTEXPR_20 size_type
+    erase_element(const key_type& key) {
         auto it = find(key);
         if (it == end()) {
             return 0;
@@ -386,11 +386,11 @@ class raw_hash_set {
 
     HMM_CONSTEXPR_20 void rehash_and_grow() {
         auto old_capacity = capacity();
-        const std::size_t new_cap = (old_capacity == 0) ? 16 : old_capacity * 2;
+        const size_type new_cap = (old_capacity == 0) ? 16 : old_capacity * 2;
         return rehash_and_grow(new_cap);
     }
 
-    HMM_CONSTEXPR_20 void rehash_and_grow(const std::size_t new_cap) {
+    HMM_CONSTEXPR_20 void rehash_and_grow(const size_type new_cap) {
         HMM_ASSERT(new_cap > capacity());
 
         const auto old_capacity = capacity();
@@ -421,7 +421,7 @@ class raw_hash_set {
         deallocate_storage(old_ctrl, old_slots, old_capacity);
     }
 
-    HMM_CONSTEXPR_20 void reserve(const std::size_t capacity) {
+    HMM_CONSTEXPR_20 void reserve(const size_type capacity) {
         if (capacity > this->capacity()) {
             rehash_and_grow(capacity);
         }
@@ -475,10 +475,10 @@ class raw_hash_set {
     HMM_NODISCARD constexpr Slot*& slots_ptr() {
         return slots_;
     }
-    HMM_NODISCARD constexpr std::size_t& capacity_ref() {
+    HMM_NODISCARD constexpr size_type& capacity_ref() {
         return capacity_;
     }
-    HMM_NODISCARD constexpr std::size_t& size_ref() {
+    HMM_NODISCARD constexpr size_type& size_ref() {
         return size_;
     }
 
@@ -514,19 +514,19 @@ class raw_hash_set {
         return capacity() == 0 || size() * 8 > capacity() * 7;
     }
 
-    HMM_CONSTEXPR_20 void allocate_storage(std::size_t cap) {
+    HMM_CONSTEXPR_20 void allocate_storage(const size_type cap) {
         auto&& control_allocator = ctrl_alloc();
         ctrl_ = CtrlTraits::allocate(control_allocator, cap);
         slots_ = slot_traits::allocate(slot_alloc(), cap);
         capacity_ = cap;
     }
 
-    HMM_CONSTEXPR_20 void deallocate_storage(std::size_t cap) {
+    HMM_CONSTEXPR_20 void deallocate_storage(const size_type cap) {
         deallocate_storage(ctrl_, slots_, cap);
     }
 
     HMM_CONSTEXPR_20 void deallocate_storage(Control* ctrl, Slot* slots,
-                                             std::size_t cap) {
+                                             const size_type cap) {
         auto&& control_allocator = ctrl_alloc();
         CtrlTraits::deallocate(control_allocator, ctrl, cap);
         slot_traits::deallocate(slot_alloc(), slots, cap);
@@ -555,8 +555,8 @@ class raw_hash_set {
     CompressedTuple<Hash, Eq, slot_allocator, CtrlAllocator> members_;
     Control* ctrl_{nullptr};
     Slot* slots_{nullptr};
-    std::size_t capacity_{0};
-    std::size_t size_{0};
+    size_type capacity_{0};
+    size_type size_{0};
 };
 
 }  // namespace detail
