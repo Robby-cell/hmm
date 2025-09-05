@@ -287,7 +287,7 @@ class raw_hash_set {
         }
         const auto full_hash = hasher()(key);
         const auto h1 = H1(full_hash);
-        auto pos = H2(full_hash, capacity());
+        const auto pos = H2(full_hash, capacity());
         std::size_t first_deleted = -1;
 
         for (std::size_t i = 0; i < capacity(); ++i) {
@@ -313,7 +313,7 @@ class raw_hash_set {
         }
         const auto full_hash = hasher()(key);
         const auto h1 = H1(full_hash);
-        auto pos = H2(full_hash, capacity());
+        const auto pos = H2(full_hash, capacity());
 
         for (std::size_t i = 0; i < capacity(); ++i) {
             const std::size_t index = (pos + i) & (capacity() - 1);
@@ -336,7 +336,7 @@ class raw_hash_set {
         }
         const auto full_hash = hasher()(key);
         const auto h1 = H1(full_hash);
-        auto pos = H2(full_hash, capacity());
+        const auto pos = H2(full_hash, capacity());
 
         for (std::size_t i = 0; i < capacity(); ++i) {
             const std::size_t index = (pos + i) & (capacity() - 1);
@@ -376,7 +376,7 @@ class raw_hash_set {
 
     HMM_NODISCARD HMM_CONSTEXPR_20 size_type
     erase_element(const key_type& key) {
-        auto it = find(key);
+        const auto it = find(key);
         if (it == end()) {
             return 0;
         }
@@ -385,7 +385,7 @@ class raw_hash_set {
     }
 
     HMM_CONSTEXPR_20 void rehash_and_grow() {
-        auto old_capacity = capacity();
+        const auto old_capacity = capacity();
         const size_type new_cap = (old_capacity == 0) ? 16 : old_capacity * 2;
         return rehash_and_grow(new_cap);
     }
@@ -401,11 +401,9 @@ class raw_hash_set {
         std::fill(ctrl_, ctrl_ + capacity(), slots::kEmpty);
 
         size_ = 0;
-
         if (!old_slots) {
             return;
         }
-
         for (std::size_t i = 0; i < old_capacity; ++i) {
             if (old_ctrl[i] >= 0) {
                 const auto& key = policy_type::key(old_slots[i]);
@@ -422,8 +420,8 @@ class raw_hash_set {
     }
 
     HMM_CONSTEXPR_20 void reserve(const size_type capacity) {
-        if (capacity > this->capacity()) {
-            rehash_and_grow(capacity);
+        if (capacity) {
+            rehash_and_grow(capacity + this->capacity());
         }
     }
 
@@ -452,7 +450,7 @@ class raw_hash_set {
             rehash_and_grow();
         }
         slot_type tmp(std::forward<Args>(args)...);
-        auto info = find_or_prepare_insert(policy_type::key(tmp));
+        const auto info = find_or_prepare_insert(policy_type::key(tmp));
         if (info.found) {
             return {iterator(ctrl_ + info.index, slots_ + info.index,
                              ctrl_ + capacity()),
