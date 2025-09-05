@@ -18,15 +18,15 @@ template <class...>
 using _AlwaysTrue = std::true_type;
 
 template <class T>
-struct ConstructorTest {
+struct IsDirectInitializable {
     template <class U, class... Args>
-    static auto test(Args&&... args)
+    static auto is_it(Args&&... args)
         -> _AlwaysTrue<decltype(U(std::forward<Args>(args)...))>;
     template <class U, class... Args>
-    static auto test(...) -> std::false_type;
+    static auto is_it(...) -> std::false_type;
 };
 
-template <class>
+template <class DirectInitializable>
 struct Constructor;
 
 template <>
@@ -53,7 +53,7 @@ struct Constructor<std::false_type> {
 template <class T, class... Args>
 T construct(Args&&... args) {
     return construction::Constructor<
-        decltype(construction::ConstructorTest<T>::template test<T>(
+        decltype(construction::IsDirectInitializable<T>::template is_it<T>(
             std::forward<Args>(
                 args)...))>::template construct<T>(std::forward<Args>(args)...);
 }
