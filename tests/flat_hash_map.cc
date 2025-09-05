@@ -31,3 +31,15 @@ TEST(flat_hash_map, InitializerListConstruction) {
     ASSERT_EQ(map.at(pair1.first), pair1.second);
     ASSERT_EQ(map.at(pair2.first), pair2.second);
 }
+
+TEST(flat_hash_map, ProveItGrowsIfNeeded) {
+    static constexpr int Count = 32;
+    flat_hash_map<int, int> map;
+    for (int i = 0; i < Count; ++i) {
+        map.insert({i, i});
+    }
+    for (int i = 0; i < Count; i += 3) {
+        ASSERT_EQ(map.at(i), i);
+    }
+    ASSERT_GT(map.capacity(), Count);
+}
