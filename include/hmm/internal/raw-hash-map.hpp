@@ -7,7 +7,6 @@
 
 #include "hmm/internal/macros.hpp"
 #include "hmm/internal/raw-hash-set.hpp"
-#include "macros.hpp"
 
 namespace hmm {
 namespace detail {
