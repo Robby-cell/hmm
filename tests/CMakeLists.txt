@@ -16,7 +16,7 @@ endif ()
 include(GoogleTest)
 
 # --- Tests ---
-add_executable(run_tests main.cc)
+add_executable(run_tests flat_hash_map.cc flat_hash_set.cc)
 target_link_libraries(run_tests PRIVATE hmm gtest_main)
 set_target_properties(run_tests
     PROPERTIES
