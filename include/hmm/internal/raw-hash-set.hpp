@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <initializer_list>
 #include <memory>
+#include <type_traits>
 #include <utility>
 
 #include "hmm/internal/detail.hpp"
@@ -11,6 +12,51 @@
 
 namespace hmm {
 namespace detail {
+
+namespace construction {
+template <class...>
+using _AlwaysTrue = std::true_type;
+
+template <class T>
+struct ConstructorTest {
+    template <class U, class... Args>
+    static auto test(Args&&... args)
+        -> _AlwaysTrue<decltype(U(std::forward<Args>(args)...))>;
+    template <class U, class... Args>
+    static auto test(...) -> std::false_type;
+};
+
+template <class>
+struct Constructor;
+
+template <>
+struct Constructor<std::true_type> {
+    template <class T, class... Args>
+    static T construct(Args&&... args) {
+        return T(std::forward<Args>(args)...);
+    }
+};
+
+template <>
+struct Constructor<std::false_type> {
+    template <class T, class... Args>
+    static T construct(Args&&... args) {
+        return T{std::forward<Args>(args)...};
+    }
+};
+}  // namespace construction
+
+// std::is_aggregate does not exist in c++11
+// This is a work-around to achieve what I need.
+// If it cannot be constructed by direct initialization,
+// aggregate initialization will be used.
+template <class T, class... Args>
+T construct(Args&&... args) {
+    return construction::Constructor<
+        decltype(construction::ConstructorTest<T>::template test<T>(
+            std::forward<Args>(
+                args)...))>::template construct<T>(std::forward<Args>(args)...);
+}
 
 template <class Policy, class Hash, class Eq, class Alloc>
 class raw_hash_set {
@@ -449,7 +495,10 @@ class raw_hash_set {
         if (needs_resize()) {
             rehash_and_grow();
         }
-        slot_type tmp(std::forward<Args>(args)...);
+
+        // slot_type tmp(std::forward<Args>(args)...);
+        auto tmp = construct<slot_type>(std::forward<Args>(args)...);
+
         const auto info = find_or_prepare_insert(policy_type::key(tmp));
         if (info.found) {
             return {iterator(ctrl_ + info.index, slots_ + info.index,
