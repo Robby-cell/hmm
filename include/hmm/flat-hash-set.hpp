@@ -37,10 +37,12 @@ struct HMM_NODISCARD SetPolicy;
 
 template <class Contained, class Hash = Hasher<Contained>,
           class Eq = std::equal_to<Contained>,
-          class Alloc = std::allocator<typename SetPolicy<Contained>::key_type>>
+          class Alloc =
+              std::allocator<typename SetPolicy<Contained>::slot_type>>
 class flat_hash_set
-    : internal::raw_hash_set<SetPolicy<Contained>, Hash, Eq, Alloc> {
-    using Base = flat_hash_set::raw_hash_set;
+    : public internal::raw_hash_set<SetPolicy<Contained>, Hash, Eq, Alloc> {
+    // using Base = flat_hash_set::raw_hash_set;
+    using Base = internal::raw_hash_set<SetPolicy<Contained>, Hash, Eq, Alloc>;
 
    public:
     using policy_type = typename Base::policy_type;
@@ -132,7 +134,7 @@ template <class Contained, class Hash = Hasher<Contained>,
           class Eq = std::equal_to<Contained>>
 using flat_hash_set = ::hmm::flat_hash_set<
     Contained, Hash, Eq,
-    std::pmr::polymorphic_allocator<typename SetPolicy<Contained>::key_type>>;
+    std::pmr::polymorphic_allocator<typename SetPolicy<Contained>::slot_type>>;
 }
 #endif
 

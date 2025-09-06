@@ -38,10 +38,12 @@ struct HMM_NODISCARD MapPolicy;
 template <class Key, class Value, class Hash = Hasher<Key>,
           class KeyEqual = std::equal_to<Key>,
           class Alloc =
-              std::allocator<typename MapPolicy<Key, Value>::value_type>>
+              std::allocator<typename MapPolicy<Key, Value>::slot_type>>
 class flat_hash_map : public internal::raw_hash_map<MapPolicy<Key, Value>, Hash,
                                                     KeyEqual, Alloc> {
-    using Base = flat_hash_map::raw_hash_map;
+    // using Base = flat_hash_map::raw_hash_map;
+    using Base =
+        internal::raw_hash_map<MapPolicy<Key, Value>, Hash, KeyEqual, Alloc>;
 
    public:
     using policy_type = typename Base::policy_type;
@@ -58,8 +60,8 @@ class flat_hash_map : public internal::raw_hash_map<MapPolicy<Key, Value>, Hash,
     using pointer = typename Base::pointer;
     using allocator_type = typename Base::allocator_type;
 
-    using typename Base::const_iterator;
-    using typename Base::iterator;
+    using const_iterator = typename Base::const_iterator;
+    using iterator = typename Base::iterator;
 
     HMM_CONSTEXPR_20 flat_hash_map() = default;
 
@@ -142,10 +144,9 @@ struct HMM_NODISCARD MapPolicy {
 namespace pmr {
 template <class Key, class Value, class Hash = Hasher<Key>,
           class Eq = std::equal_to<Key>>
-using flat_hash_map =
-    ::hmm::flat_hash_map<Key, Value, Hash, Eq,
-                         std::pmr::polymorphic_allocator<
-                             typename MapPolicy<Key, Value>::value_type>>;
+using flat_hash_map = ::hmm::flat_hash_map<
+    Key, Value, Hash, Eq,
+    std::pmr::polymorphic_allocator<typename MapPolicy<Key, Value>::slot_type>>;
 }
 #endif
 

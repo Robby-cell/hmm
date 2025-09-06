@@ -19,6 +19,7 @@
 
 #include <cstdint>
 #include <type_traits>
+#include <utility>
 
 #include "hmm/internal/macros.hpp"
 
@@ -109,6 +110,13 @@ T construct(Args&&... args) {
         decltype(construction::IsDirectInitializable<T>::template is_it<T>(
             std::forward<Args>(
                 args)...))>::template construct<T>(std::forward<Args>(args)...);
+}
+
+template <class T, class U>
+T exchange(T& self, U&& other) {
+    T old = std::move(self);
+    self = std::forward<U>(other);
+    return old;
 }
 
 }  // namespace detail

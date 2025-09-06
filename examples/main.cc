@@ -5,10 +5,28 @@
 #include <string>
 
 struct Cm {
+    Cm() = default;
+    Cm(const Cm&) = default;
+    Cm(Cm&&) noexcept = default;
+
+    Cm& operator=(const Cm&) = default;
+    Cm& operator=(Cm&&) noexcept = default;
+
+    Cm(int v) : count(v) {}
+
     int count{};
 };
 
 struct PersonInfo {
+    PersonInfo() = default;
+    PersonInfo(int age, Cm height) : age(age), height(height) {}
+
+    PersonInfo(const PersonInfo&) = default;
+    PersonInfo(PersonInfo&&) noexcept = default;
+
+    PersonInfo& operator=(const PersonInfo&) = default;
+    PersonInfo& operator=(PersonInfo&&) noexcept = default;
+
     int age{};
     Cm height{};
 };
@@ -43,7 +61,7 @@ int main() {
     hmm::flat_hash_map<std::string, PersonInfo, IgnoreCaseHash, IgnoreCaseCmp>
         people;
 
-    people["John"] = PersonInfo{37, Cm{187}};
+    people["John"] = PersonInfo{37, Cm(187)};
     people.insert({"Billy", {21, Cm{190}}});
 
     std::cout << "John is " << people.at("jOhN").age << " years old\n";

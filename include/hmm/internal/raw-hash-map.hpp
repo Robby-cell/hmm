@@ -30,8 +30,9 @@ namespace internal {
 template <class Policy, class Hash = std::hash<typename Policy::key_type>,
           class Eq = std::equal_to<typename Policy::key_type>,
           class Alloc = std::allocator<typename Policy::value_type>>
-class raw_hash_map : public raw_hash_set<Policy, Hash, Eq, Alloc> {
-    using Base = raw_hash_map::raw_hash_set;
+class raw_hash_map : protected raw_hash_set<Policy, Hash, Eq, Alloc> {
+    // using Base = raw_hash_map::raw_hash_set;
+    using Base = raw_hash_set<Policy, Hash, Eq, Alloc>;
 
    protected:
     using policy_type = typename Base::policy_type;
@@ -51,8 +52,8 @@ class raw_hash_map : public raw_hash_set<Policy, Hash, Eq, Alloc> {
     using typename Base::Control;
     using typename Base::Slot;
 
-    using typename Base::const_iterator;
-    using typename Base::iterator;
+    using const_iterator = typename Base::const_iterator;
+    using iterator = typename Base::iterator;
 
     HMM_CONSTEXPR_20 raw_hash_map() = default;
 
@@ -113,7 +114,7 @@ class raw_hash_map : public raw_hash_set<Policy, Hash, Eq, Alloc> {
     }
 
     HMM_NODISCARD HMM_CONSTEXPR_20 mapped_type& at(const key_type& key) {
-        auto it = find(key);
+        auto it = this->find(key);
         auto my_end = end();
         if (it == my_end) {
             ThrowOutOfRange("raw_hash_map<>::at()");
@@ -123,7 +124,7 @@ class raw_hash_map : public raw_hash_set<Policy, Hash, Eq, Alloc> {
 
     HMM_NODISCARD HMM_CONSTEXPR_20 const mapped_type& at(
         const key_type& key) const {
-        auto it = find(key);
+        auto it = this->find(key);
         auto my_end = end();
         if (it == my_end) {
             ThrowOutOfRange("raw_hash_map<>::at()const");

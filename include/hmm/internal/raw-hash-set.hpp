@@ -62,9 +62,10 @@ class raw_hash_set {
 
         constexpr iterator_impl() = default;
 
-        template <typename OtherValue,
-                  typename = std::enable_if_t<std::is_const_v<Value> &&
-                                              !std::is_const_v<OtherValue>>>
+        template <typename OtherValue, typename = typename std::enable_if<
+                                           (std::is_const<Value>::value &&
+                                            !std::is_const<OtherValue>::value),
+                                           void>::type>
         constexpr iterator_impl(const iterator_impl<OtherValue>& other)
             : ctrl_(other.ctrl_),
               slot_(other.slot_),
@@ -218,10 +219,10 @@ class raw_hash_set {
 
     HMM_CONSTEXPR_20 raw_hash_set(raw_hash_set&& other) noexcept
         : members_(std::move(other.members_)),
-          ctrl_(std::exchange(other.ctrl_, nullptr)),
-          slots_(std::exchange(other.slots_, nullptr)),
-          capacity_(std::exchange(other.capacity_, 0)),
-          size_(std::exchange(other.size_, 0)) {}
+          ctrl_(detail::exchange(other.ctrl_, nullptr)),
+          slots_(detail::exchange(other.slots_, nullptr)),
+          capacity_(detail::exchange(other.capacity_, 0)),
+          size_(detail::exchange(other.size_, 0)) {}
 
     HMM_CONSTEXPR_20 raw_hash_set(const raw_hash_set& other) noexcept
         : raw_hash_set(other.begin(), other.end()) {}
@@ -230,10 +231,10 @@ class raw_hash_set {
         if (this != &other) {
             clear_and_deallocate();
             members_ = std::move(other.members_);
-            ctrl_ = std::exchange(other.ctrl_, nullptr);
-            slots_ = std::exchange(other.slots_, nullptr);
-            capacity_ = std::exchange(other.capacity_, 0);
-            size_ = std::exchange(other.size_, 0);
+            ctrl_ = detail::exchange(other.ctrl_, nullptr);
+            slots_ = detail::exchange(other.slots_, nullptr);
+            capacity_ = detail::exchange(other.capacity_, 0);
+            size_ = detail::exchange(other.size_, 0);
         }
         return *this;
     }
@@ -499,32 +500,32 @@ class raw_hash_set {
                 true};
     }
 
-    HMM_NODISCARD constexpr Control*& ctrl_ptr() {
+    HMM_NODISCARD HMM_CONSTEXPR_14 Control*& ctrl_ptr() {
         return ctrl_;
     }
-    HMM_NODISCARD constexpr Slot*& slots_ptr() {
+    HMM_NODISCARD HMM_CONSTEXPR_14 Slot*& slots_ptr() {
         return slots_;
     }
-    HMM_NODISCARD constexpr size_type& capacity_ref() {
+    HMM_NODISCARD HMM_CONSTEXPR_14 size_type& capacity_ref() {
         return capacity_;
     }
-    HMM_NODISCARD constexpr size_type& size_ref() {
+    HMM_NODISCARD HMM_CONSTEXPR_14 size_type& size_ref() {
         return size_;
     }
 
     using CtrlAllocator = typename slot_traits::template rebind_alloc<Control>;
     using CtrlTraits = std::allocator_traits<CtrlAllocator>;
 
-    HMM_NODISCARD constexpr Hash& hasher() noexcept {
+    HMM_NODISCARD HMM_CONSTEXPR_14 Hash& hasher() noexcept {
         return members_.template get<0, Hash>();
     }
-    HMM_NODISCARD constexpr Eq& equal() noexcept {
+    HMM_NODISCARD HMM_CONSTEXPR_14 Eq& equal() noexcept {
         return members_.template get<1, Eq>();
     }
-    HMM_NODISCARD constexpr slot_allocator& slot_alloc() noexcept {
+    HMM_NODISCARD HMM_CONSTEXPR_14 slot_allocator& slot_alloc() noexcept {
         return members_.template get<2, slot_allocator>();
     }
-    HMM_NODISCARD constexpr CtrlAllocator& ctrl_alloc() noexcept {
+    HMM_NODISCARD HMM_CONSTEXPR_14 CtrlAllocator& ctrl_alloc() noexcept {
         return members_.template get<3, CtrlAllocator>();
     }
     HMM_NODISCARD constexpr const Hash& hasher() const noexcept {
