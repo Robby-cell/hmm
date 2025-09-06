@@ -55,12 +55,12 @@ struct CompressedTuple : private Ts... {
     CompressedTuple() = default;
     CompressedTuple(const Ts&... args) : Ts(args)... {}
 
-    template <int I, typename T>
+    template <std::size_t I, typename T>
     HMM_NODISCARD T& get() {
         return static_cast<T&>(*this);
     }
 
-    template <int I, typename T>
+    template <std::size_t I, typename T>
     HMM_NODISCARD const T& get() const {
         return static_cast<const T&>(*this);
     }
