@@ -442,17 +442,29 @@ class raw_hash_set {
         }
     }
 
-    HMM_CONSTEXPR_20 void insert(const value_type& value) {
+    HMM_CONSTEXPR_20 void insert(const slot_type& value) {
         emplace(value);
     }
 
-    HMM_CONSTEXPR_20 void insert(value_type&& value) {
+    HMM_CONSTEXPR_20 void insert(slot_type&& value) {
         emplace(std::move(value));
     }
 
-    HMM_CONSTEXPR_20 void insert(std::initializer_list<value_type> values) {
+    HMM_CONSTEXPR_20 void insert(std::initializer_list<slot_type> values) {
         insert(values.begin(), values.end());
     }
+
+    // HMM_CONSTEXPR_20 void insert(const value_type& value) {
+    //     emplace(value);
+    // }
+
+    // HMM_CONSTEXPR_20 void insert(value_type&& value) {
+    //     emplace(std::move(value));
+    // }
+
+    // HMM_CONSTEXPR_20 void insert(std::initializer_list<value_type> values) {
+    //     insert(values.begin(), values.end());
+    // }
 
     template <class Iter, class Sentinel>
     HMM_CONSTEXPR_20 void insert(Iter begin, Sentinel end) {
