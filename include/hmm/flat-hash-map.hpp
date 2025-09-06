@@ -64,7 +64,7 @@ class flat_hash_map : public internal::raw_hash_map<MapPolicy<Key, Value>, Hash,
     HMM_CONSTEXPR_20 flat_hash_map() = default;
 
     HMM_CONSTEXPR_20 flat_hash_map(
-        std::initializer_list<value_type> initial,
+        std::initializer_list<slot_type> initial,
         const allocator_type& alloc = allocator_type())
         : Base(initial, alloc) {}
 

@@ -195,7 +195,7 @@ class raw_hash_set {
     HMM_CONSTEXPR_20 raw_hash_set() = default;
 
     HMM_CONSTEXPR_20 raw_hash_set(
-        std::initializer_list<value_type> initial,
+        std::initializer_list<slot_type> initial,
         const slot_allocator& alloc = slot_allocator())
         : raw_hash_set(initial.begin(), initial.end(), alloc) {}
 

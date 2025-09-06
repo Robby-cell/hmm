@@ -57,7 +57,7 @@ class raw_hash_map : public raw_hash_set<Policy, Hash, Eq, Alloc> {
     HMM_CONSTEXPR_20 raw_hash_map() = default;
 
     HMM_CONSTEXPR_20 raw_hash_map(
-        std::initializer_list<value_type> initial,
+        std::initializer_list<slot_type> initial,
         const allocator_type& alloc = allocator_type())
         : Base(initial, alloc) {}
 
