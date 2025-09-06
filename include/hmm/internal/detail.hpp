@@ -7,6 +7,7 @@
 #include "hmm/internal/macros.hpp"
 
 namespace hmm {
+namespace internal {
 namespace detail {
 
 template <class Ty>
@@ -49,7 +50,53 @@ struct CompressedTuple : private Ts... {
     }
 };
 
+namespace construction {
+template <class...>
+using _AlwaysTrue = std::true_type;
+
+template <class T>
+struct IsDirectInitializable {
+    template <class U, class... Args>
+    static auto is_it(Args&&... args)
+        -> _AlwaysTrue<decltype(U(std::forward<Args>(args)...))>;
+    template <class U, class... Args>
+    static auto is_it(...) -> std::false_type;
+};
+
+template <class DirectInitializable>
+struct Constructor;
+
+template <>
+struct Constructor<std::true_type> {
+    template <class T, class... Args>
+    static T construct(Args&&... args) {
+        return T(std::forward<Args>(args)...);
+    }
+};
+
+template <>
+struct Constructor<std::false_type> {
+    template <class T, class... Args>
+    static T construct(Args&&... args) {
+        return T{std::forward<Args>(args)...};
+    }
+};
+}  // namespace construction
+
+// std::is_aggregate does not exist in c++11
+// This is a work-around to achieve what I need.
+// If it cannot be constructed by direct initialization,
+// aggregate initialization will be used.
+template <class T, class... Args>
+T construct(Args&&... args) {
+    return construction::Constructor<
+        decltype(construction::IsDirectInitializable<T>::template is_it<T>(
+            std::forward<Args>(
+                args)...))>::template construct<T>(std::forward<Args>(args)...);
+}
+
 }  // namespace detail
+}  // namespace internal
 }  // namespace hmm
 
 #endif  // HMM_INTERNAL_DETAIL_HPP

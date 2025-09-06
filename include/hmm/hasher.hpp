@@ -22,7 +22,8 @@ struct Hasher<void> {
     template <class Ty>
     HMM_NODISCARD HMM_CONSTEXPR_20 HMM_STATIC_CALL std::size_t operator()(
         Ty&& value) HMM_STATIC_CALL_CONST {
-        return Hasher<detail::remove_cvref_t<Ty>>{}(std::forward<Ty>(value));
+        return Hasher<internal::detail::remove_cvref_t<Ty>>{}(
+            std::forward<Ty>(value));
     }
 };
 

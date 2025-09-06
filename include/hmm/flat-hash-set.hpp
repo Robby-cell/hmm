@@ -23,7 +23,7 @@ template <class Contained, class Hash = Hasher<Contained>,
           class Eq = std::equal_to<Contained>,
           class Alloc = std::allocator<typename SetPolicy<Contained>::key_type>>
 class flat_hash_set
-    : detail::raw_hash_set<SetPolicy<Contained>, Hash, Eq, Alloc> {
+    : internal::raw_hash_set<SetPolicy<Contained>, Hash, Eq, Alloc> {
     using Base = flat_hash_set::raw_hash_set;
 
    public:

@@ -23,8 +23,8 @@ template <class Key, class Value, class Hash = Hasher<Key>,
           class KeyEqual = std::equal_to<Key>,
           class Alloc =
               std::allocator<typename MapPolicy<Key, Value>::value_type>>
-class flat_hash_map : public detail::raw_hash_map<MapPolicy<Key, Value>, Hash,
-                                                  KeyEqual, Alloc> {
+class flat_hash_map : public internal::raw_hash_map<MapPolicy<Key, Value>, Hash,
+                                                    KeyEqual, Alloc> {
     using Base = flat_hash_map::raw_hash_map;
 
    public:

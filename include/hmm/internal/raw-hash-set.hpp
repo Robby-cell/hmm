@@ -11,52 +11,7 @@
 #include "hmm/internal/macros.hpp"
 
 namespace hmm {
-namespace detail {
-
-namespace construction {
-template <class...>
-using _AlwaysTrue = std::true_type;
-
-template <class T>
-struct IsDirectInitializable {
-    template <class U, class... Args>
-    static auto is_it(Args&&... args)
-        -> _AlwaysTrue<decltype(U(std::forward<Args>(args)...))>;
-    template <class U, class... Args>
-    static auto is_it(...) -> std::false_type;
-};
-
-template <class DirectInitializable>
-struct Constructor;
-
-template <>
-struct Constructor<std::true_type> {
-    template <class T, class... Args>
-    static T construct(Args&&... args) {
-        return T(std::forward<Args>(args)...);
-    }
-};
-
-template <>
-struct Constructor<std::false_type> {
-    template <class T, class... Args>
-    static T construct(Args&&... args) {
-        return T{std::forward<Args>(args)...};
-    }
-};
-}  // namespace construction
-
-// std::is_aggregate does not exist in c++11
-// This is a work-around to achieve what I need.
-// If it cannot be constructed by direct initialization,
-// aggregate initialization will be used.
-template <class T, class... Args>
-T construct(Args&&... args) {
-    return construction::Constructor<
-        decltype(construction::IsDirectInitializable<T>::template is_it<T>(
-            std::forward<Args>(
-                args)...))>::template construct<T>(std::forward<Args>(args)...);
-}
+namespace internal {
 
 template <class Policy, class Hash, class Eq, class Alloc>
 class raw_hash_set {
@@ -322,7 +277,7 @@ class raw_hash_set {
             return;
         }
         clear_elements();
-        std::fill(ctrl_, ctrl_ + capacity(), slots::kEmpty);
+        std::fill(ctrl_, ctrl_ + capacity(), detail::slots::kEmpty);
         size_ = 0;
     }
 
@@ -332,16 +287,16 @@ class raw_hash_set {
             return {0, false};
         }
         const auto full_hash = hasher()(key);
-        const auto h1 = H1(full_hash);
-        const auto pos = H2(full_hash, capacity());
+        const auto h1 = detail::H1(full_hash);
+        const auto pos = detail::H2(full_hash, capacity());
         std::size_t first_deleted = -1;
 
         for (std::size_t i = 0; i < capacity(); ++i) {
             const std::size_t index = (pos + i) & (capacity() - 1);
-            if (ctrl_[index] == slots::kEmpty) {
+            if (ctrl_[index] == detail::slots::kEmpty) {
                 return {(first_deleted != -1) ? first_deleted : index, false};
             }
-            if (ctrl_[index] == slots::kDeleted) {
+            if (ctrl_[index] == detail::slots::kDeleted) {
                 if (first_deleted == -1) {
                     first_deleted = index;
                 }
@@ -358,8 +313,8 @@ class raw_hash_set {
             return end();
         }
         const auto full_hash = hasher()(key);
-        const auto h1 = H1(full_hash);
-        const auto pos = H2(full_hash, capacity());
+        const auto h1 = detail::H1(full_hash);
+        const auto pos = detail::H2(full_hash, capacity());
 
         for (std::size_t i = 0; i < capacity(); ++i) {
             const std::size_t index = (pos + i) & (capacity() - 1);
@@ -368,7 +323,7 @@ class raw_hash_set {
                 return iterator(ctrl_ + index, slots_ + index,
                                 ctrl_ + capacity());
             }
-            if (ctrl_[index] == slots::kEmpty) {
+            if (ctrl_[index] == detail::slots::kEmpty) {
                 return end();
             }
         }
@@ -381,8 +336,8 @@ class raw_hash_set {
             return end();
         }
         const auto full_hash = hasher()(key);
-        const auto h1 = H1(full_hash);
-        const auto pos = H2(full_hash, capacity());
+        const auto h1 = detail::H1(full_hash);
+        const auto pos = detail::H2(full_hash, capacity());
 
         for (std::size_t i = 0; i < capacity(); ++i) {
             const std::size_t index = (pos + i) & (capacity() - 1);
@@ -391,7 +346,7 @@ class raw_hash_set {
                 return const_iterator(ctrl_ + index, slots_ + index,
                                       ctrl_ + capacity());
             }
-            if (ctrl_[index] == slots::kEmpty) {
+            if (ctrl_[index] == detail::slots::kEmpty) {
                 return end();
             }
         }
@@ -406,7 +361,7 @@ class raw_hash_set {
     HMM_NODISCARD HMM_CONSTEXPR_20 iterator erase(const_iterator cit) {
         std::size_t index = cit.slot_ - slots_;
         policy_type::destroy(slot_alloc(), &slots_[index]);
-        ctrl_[index] = slots::kDeleted;
+        ctrl_[index] = detail::slots::kDeleted;
         --size_;
         auto it =
             iterator(cit.ctrl_, const_cast<pointer>(cit.slot_), cit.end_ctrl_);
@@ -416,7 +371,7 @@ class raw_hash_set {
 
     HMM_CONSTEXPR_20 void erase_at(size_type index) {
         policy_type::destroy(slot_alloc(), &slots_[index]);
-        ctrl_[index] = slots::kDeleted;
+        ctrl_[index] = detail::slots::kDeleted;
         --size_;
     }
 
@@ -444,7 +399,7 @@ class raw_hash_set {
         const auto old_slots = slots_;
 
         allocate_storage(new_cap);
-        std::fill(ctrl_, ctrl_ + capacity(), slots::kEmpty);
+        std::fill(ctrl_, ctrl_ + capacity(), detail::slots::kEmpty);
 
         size_ = 0;
         if (!old_slots) {
@@ -454,7 +409,7 @@ class raw_hash_set {
             if (old_ctrl[i] >= 0) {
                 const auto& key = policy_type::key(old_slots[i]);
                 auto info = find_or_prepare_insert(key);
-                ctrl_[info.index] = H1(hasher()(key));
+                ctrl_[info.index] = detail::H1(hasher()(key));
                 policy_type::construct(slot_alloc(), &slots_[info.index],
                                        std::move(old_slots[i]));
                 policy_type::destroy(slot_alloc(), &old_slots[i]);
@@ -497,7 +452,7 @@ class raw_hash_set {
         }
 
         // slot_type tmp(std::forward<Args>(args)...);
-        auto tmp = construct<slot_type>(std::forward<Args>(args)...);
+        auto tmp = detail::construct<slot_type>(std::forward<Args>(args)...);
 
         const auto info = find_or_prepare_insert(policy_type::key(tmp));
         if (info.found) {
@@ -507,7 +462,7 @@ class raw_hash_set {
         }
         const auto& key = policy_type::key(tmp);
         const auto full_hash = hasher()(key);
-        ctrl_[info.index] = H1(full_hash);
+        ctrl_[info.index] = detail::H1(full_hash);
         policy_type::construct(slot_alloc(), &slots_[info.index],
                                std::move(tmp));
         ++size_;
@@ -599,14 +554,14 @@ class raw_hash_set {
         size_ = 0;
     }
 
-    CompressedTuple<Hash, Eq, slot_allocator, CtrlAllocator> members_;
+    detail::CompressedTuple<Hash, Eq, slot_allocator, CtrlAllocator> members_;
     Control* ctrl_{nullptr};
     Slot* slots_{nullptr};
     size_type capacity_{0};
     size_type size_{0};
 };
 
-}  // namespace detail
+}  // namespace internal
 }  // namespace hmm
 
 #endif  // HMM_INTERNAL_RAW_HASH_SET_HPP

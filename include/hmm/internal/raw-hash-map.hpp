@@ -9,7 +9,7 @@
 #include "hmm/internal/raw-hash-set.hpp"
 
 namespace hmm {
-namespace detail {
+namespace internal {
 
 template <class Policy, class Hash = std::hash<typename Policy::key_type>,
           class Eq = std::equal_to<typename Policy::key_type>,
@@ -86,7 +86,7 @@ class raw_hash_map : public raw_hash_set<Policy, Hash, Eq, Alloc> {
         }
 
         const auto full_hash = Base::hasher()(key);
-        Base::ctrl_ptr()[info.index] = H1(full_hash);
+        Base::ctrl_ptr()[info.index] = detail::H1(full_hash);
 
         policy_type::construct(Base::slot_alloc(),
                                &Base::slots_ptr()[info.index],
@@ -121,7 +121,7 @@ class raw_hash_map : public raw_hash_set<Policy, Hash, Eq, Alloc> {
     }
 };
 
-}  // namespace detail
+}  // namespace internal
 }  // namespace hmm
 
 #endif  // HMM_INTERNAL_RAW_HASH_MAP_HPP
