@@ -14,8 +14,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef HMM_INTERNAL_RAW_HASH_MAP_HPP
-#define HMM_INTERNAL_RAW_HASH_MAP_HPP
+#ifndef HMM_HMM_INTERNAL_RAW_HASH_MAP_HPP
+#define HMM_HMM_INTERNAL_RAW_HASH_MAP_HPP
 
 #include <functional>
 #include <initializer_list>
@@ -140,4 +140,4 @@ class raw_hash_map : public raw_hash_set<Policy, Hash, Eq, Alloc> {
 }  // namespace internal
 }  // namespace hmm
 
-#endif  // HMM_INTERNAL_RAW_HASH_MAP_HPP
+#endif  // HMM_HMM_INTERNAL_RAW_HASH_MAP_HPP

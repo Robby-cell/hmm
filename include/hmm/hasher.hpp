@@ -14,8 +14,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef HMM_HASHER_HPP
-#define HMM_HASHER_HPP
+#ifndef HMM_HMM_HASHER_HPP
+#define HMM_HMM_HASHER_HPP
 
 #include <functional>
 #include <utility>
@@ -45,4 +45,4 @@ struct Hasher<void> {
 
 }  // namespace hmm
 
-#endif  // HMM_HASHER_HPP
+#endif  // HMM_HMM_HASHER_HPP

@@ -14,8 +14,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef HMM_INTERNAL_RAW_HASH_SET_HPP
-#define HMM_INTERNAL_RAW_HASH_SET_HPP
+#ifndef HMM_HMM_INTERNAL_RAW_HASH_SET_HPP
+#define HMM_HMM_INTERNAL_RAW_HASH_SET_HPP
 
 #include <cstdint>
 #include <initializer_list>
@@ -580,4 +580,4 @@ class raw_hash_set {
 }  // namespace internal
 }  // namespace hmm
 
-#endif  // HMM_INTERNAL_RAW_HASH_SET_HPP
+#endif  // HMM_HMM_INTERNAL_RAW_HASH_SET_HPP

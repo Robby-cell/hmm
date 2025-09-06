@@ -14,8 +14,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef HMM_FLAT_HASH_SET_HPP
-#define HMM_FLAT_HASH_SET_HPP
+#ifndef HMM_HMM_FLAT_HASH_SET_HPP
+#define HMM_HMM_FLAT_HASH_SET_HPP
 
 #include <functional>
 #include <initializer_list>
@@ -138,4 +138,4 @@ using flat_hash_set = ::hmm::flat_hash_set<
 
 }  // namespace hmm
 
-#endif  // HMM_FLAT_HASH_SET_HPP
+#endif  // HMM_HMM_FLAT_HASH_SET_HPP
