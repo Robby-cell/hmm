@@ -17,6 +17,7 @@
 #ifndef HMM_HMM_INTERNAL_DETAIL_HPP
 #define HMM_HMM_INTERNAL_DETAIL_HPP
 
+#include <cstddef>
 #include <cstdint>
 #include <type_traits>
 #include <utility>
@@ -38,12 +39,17 @@ using remove_cvref_t =
 template <class Ty>
 struct remove_cvref : type_identity<remove_cvref_t<Ty>> {};
 
-constexpr std::int8_t H1(const std::size_t hash) {
-    return hash >> 57;  // Top 7 bits
+constexpr std::size_t H1(const std::size_t hash) {
+    return hash;
 }
 
-constexpr std::size_t H2(const std::size_t hash, const std::size_t capacity) {
-    return hash & (capacity - 1);
+constexpr std::int8_t H2(const std::size_t hash) {
+    return hash >> (sizeof(std::size_t) * 8 - 7);
+}
+
+HMM_CONSTEXPR_14 inline std::size_t IndexWithoutProbing(
+    const std::size_t h1, const std::size_t capacity) noexcept {
+    return h1 & (capacity - 1);
 }
 
 namespace slots {

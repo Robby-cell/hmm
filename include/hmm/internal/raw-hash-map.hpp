@@ -21,6 +21,7 @@
 #include <initializer_list>
 #include <stdexcept>
 
+#include "hmm/internal/detail.hpp"
 #include "hmm/internal/macros.hpp"
 #include "hmm/internal/raw-hash-set.hpp"
 
@@ -102,8 +103,9 @@ class raw_hash_map : protected raw_hash_set<Policy, Hash, Eq, Alloc> {
             return policy_type::value(Base::slots_ptr()[info.index]);
         }
 
-        const auto full_hash = Base::hasher()(key);
-        Base::ctrl_ptr()[info.index] = detail::H1(full_hash);
+        const auto full_hash = info.full_hash;
+        const auto h2 = detail::H2(full_hash);
+        Base::ctrl_ptr()[info.index] = h2;
 
         policy_type::construct(Base::slot_alloc(),
                                &Base::slots_ptr()[info.index],
