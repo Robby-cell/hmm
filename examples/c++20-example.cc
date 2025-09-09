@@ -9,7 +9,7 @@
 
 int main() {
     static std::byte buffer[2048];
-    std::pmr::monotonic_buffer_resource resource(buffer, sizeof(buffer));
+    static std::pmr::monotonic_buffer_resource resource(buffer, sizeof(buffer));
 
     {
         // Map that uses pmr allocator
