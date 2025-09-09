@@ -226,7 +226,7 @@ class raw_hash_set {
           size_(detail::exchange(other.size_, 0)) {}
 
     HMM_CONSTEXPR_20 raw_hash_set(const raw_hash_set& other) noexcept
-        : raw_hash_set(other.begin(), other.end()) {}
+        : raw_hash_set(other.begin(), other.end(), other.slot_alloc()) {}
 
     HMM_CONSTEXPR_20 raw_hash_set& operator=(raw_hash_set&& other) noexcept {
         if (this != &other) {
@@ -244,6 +244,7 @@ class raw_hash_set {
         const raw_hash_set& other) noexcept {
         if (this != &other) {
             clear();
+            slot_alloc() = other.slot_alloc();
             insert(other.begin(), other.end());
         }
         return *this;
