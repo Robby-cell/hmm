@@ -49,17 +49,17 @@ install(
 
 # Install the INTERFACE target.
 # For INTERFACE libraries, this command's main job is to associate the
-# target 'hmm' with the export set 'hmmTargets'.
+# target 'hmm' with the export set 'hmm-targets'.
 install(
     TARGETS hmm
-    EXPORT hmmTargets # Name of the export set we'll create below
+    EXPORT hmm-targets # Name of the export set we'll create below
 )
 
-# Generate and install the 'hmmTargets.cmake' file.
+# Generate and install the 'hmm-targets.cmake' file.
 # This file defines the imported target 'hmm::hmm' for consumers.
 install(
-    EXPORT hmmTargets
-    FILE        hmmTargets.cmake
+    EXPORT hmm-targets
+    FILE        hmm-targets.cmake
     NAMESPACE   hmm:: # The namespace must match our alias
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hmm
 )
@@ -68,7 +68,7 @@ install(
 
 # Generate the version file for find_package(hmm 1.2.3 ...)
 write_basic_package_version_file(
-    "${CMAKE_CURRENT_BINARY_DIR}/hmmConfigVersion.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/hmm-config-version.cmake"
     VERSION ${PROJECT_VERSION}
     COMPATIBILITY AnyNewerVersion
 )
@@ -76,15 +76,15 @@ write_basic_package_version_file(
 # Use the template to generate the main config file
 configure_package_config_file(
     "cmake/hmm-config.cmake.in" # Assumes you have this template file
-    "${CMAKE_CURRENT_BINARY_DIR}/hmmConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/hmm-config.cmake"
     INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hmm
 )
 
 # Install the generated config files
 install(
     FILES
-        "${CMAKE_CURRENT_BINARY_DIR}/hmmConfig.cmake"
-        "${CMAKE_CURRENT_BINARY_DIR}/hmmConfigVersion.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/hmm-config.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/hmm-configVersion.cmake"
     DESTINATION
         ${CMAKE_INSTALL_LIBDIR}/cmake/hmm
 )

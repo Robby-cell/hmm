@@ -1,4 +1,4 @@
 @PACKAGE_INIT@
 
-include("${CMAKE_CURRENT_LIST_DIR}/hmmTargets.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/hmm-targets.cmake")
 check_required_components(hmm)
