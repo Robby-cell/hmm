@@ -458,11 +458,11 @@ class raw_hash_set {
     }
 
     HMM_CONSTEXPR_20 void insert(const slot_type& value) {
-        emplace(value);
+        emplace_slot(value);
     }
 
     HMM_CONSTEXPR_20 void insert(slot_type&& value) {
-        emplace(std::move(value));
+        emplace_slot(std::move(value));
     }
 
     HMM_CONSTEXPR_20 void insert(std::initializer_list<slot_type> values) {
@@ -476,15 +476,13 @@ class raw_hash_set {
         }
     }
 
-    template <typename... Args>
-    HMM_CONSTEXPR_20 std::pair<iterator, bool> emplace(Args&&... args) {
+    template <class Slot>
+    HMM_CONSTEXPR_20 std::pair<iterator, bool> emplace_slot(Slot&& slot) {
         if (needs_resize()) {
             rehash_and_grow();
         }
 
-        auto tmp = detail::construct<slot_type>(std::forward<Args>(args)...);
-
-        const auto info = find_or_prepare_insert(policy_type::key(tmp));
+        const auto info = find_or_prepare_insert(policy_type::key(slot));
         if (info.found) {
             return {iterator(ctrl_ + info.index, slots_ + info.index,
                              ctrl_ + capacity()),
@@ -494,11 +492,17 @@ class raw_hash_set {
         const auto h2 = detail::H2(full_hash);
         ctrl_[info.index] = h2;
         policy_type::construct(slot_alloc(), &slots_[info.index],
-                               std::move(tmp));
+                               std::forward<Slot>(slot));
         ++size_;
         return {iterator(ctrl_ + info.index, slots_ + info.index,
                          ctrl_ + capacity()),
                 true};
+    }
+
+    template <typename... Args>
+    HMM_CONSTEXPR_20 std::pair<iterator, bool> emplace(Args&&... args) {
+        return emplace_slot(
+            detail::construct<slot_type>(std::forward<Args>(args)...));
     }
 
     HMM_NODISCARD HMM_CONSTEXPR_14 Control*& ctrl_ptr() {
@@ -542,7 +546,7 @@ class raw_hash_set {
         return members_.template get<3, CtrlAllocator>();
     }
 
-    HMM_NODISCARD constexpr bool needs_resize() const {
+    HMM_NODISCARD constexpr bool needs_resize() const noexcept {
         return capacity() == 0 || size() * 8 > capacity() * 7;
     }
 
@@ -565,7 +569,7 @@ class raw_hash_set {
     }
 
     HMM_CONSTEXPR_20 void clear_elements() {
-        for (std::size_t i = 0; i < capacity(); ++i) {
+        for (std::size_t i = 0, cap = capacity_; i < cap; ++i) {
             if (ctrl_[i] >= 0) {
                 policy_type::destroy(slot_alloc(), &slots_[i]);
             }

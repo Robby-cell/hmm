@@ -108,6 +108,11 @@ struct HMM_NODISCARD MapPolicy {
         return pair.first;
     }
 
+    HMM_NODISCARD static constexpr const key_type& key(
+        const value_type& pair) noexcept {
+        return pair.first;
+    }
+
     HMM_NODISCARD static constexpr mapped_type& value(
         slot_type& pair) noexcept {
         return pair.second;
