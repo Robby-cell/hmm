@@ -4,6 +4,8 @@
 #include <iostream>
 #include <string>
 
+#include "hmm/flat-hash-set.hpp"
+
 struct Cm {
     Cm() = default;
     Cm(const Cm&) = default;
@@ -65,4 +67,16 @@ int main() {
     people.insert({"Billy", {21, Cm{190}}});
 
     std::cout << "John is " << people.at("jOhN").age << " years old\n";
+
+    hmm::flat_hash_set<std::string> info;
+    for (const auto& pair : people) {
+        auto&& name = pair.first;
+        auto&& person_info = pair.second;
+
+        info.insert(name + " is " + std::to_string(person_info.age));
+    }
+
+    for (const auto& entry : info) {
+        std::cout << entry << '\n';
+    }
 }
