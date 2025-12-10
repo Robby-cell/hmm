@@ -22,7 +22,7 @@
 #include <memory>
 #include <utility>
 
-#include "hmm/hasher.hpp"
+#include "hmm/city-hash.hpp"
 #include "hmm/internal/macros.hpp"
 #include "hmm/internal/raw-hash-set.hpp"
 
@@ -35,7 +35,7 @@ namespace hmm {
 template <typename T>
 struct HMM_NODISCARD SetPolicy;
 
-template <class Contained, class Hash = Hasher<Contained>,
+template <class Contained, class Hash = CityHash<Contained>,
           class Eq = std::equal_to<Contained>,
           class Alloc =
               std::allocator<typename SetPolicy<Contained>::slot_type>>
@@ -129,7 +129,7 @@ struct HMM_NODISCARD SetPolicy {
 
 #if HMM_HAS_CXX_17
 namespace pmr {
-template <class Contained, class Hash = Hasher<Contained>,
+template <class Contained, class Hash = CityHash<Contained>,
           class Eq = std::equal_to<Contained>>
 using flat_hash_set = ::hmm::flat_hash_set<
     Contained, Hash, Eq,

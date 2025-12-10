@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <hmm/flat-hash-set.hpp>
 
 // Std
@@ -82,4 +83,37 @@ TEST(flat_hash_set, CustomKeysShouldWork) {
 
     const auto result = set.emplace(42);
     ASSERT_FALSE(result.second);
+}
+
+namespace test_CustomerHasherOverload {
+struct CustomKey {
+    int x;
+    template <typename H>
+    friend H HashValue(H h, const CustomKey& self) {
+        return H::combine(std::move(h), self.x);
+    }
+    friend bool operator==(const CustomKey& self,
+                           const CustomKey& that) noexcept {
+        return self.x == that.x;
+    }
+};
+}  // namespace test_CustomerHasherOverload
+TEST(flat_hash_set, CustomHasherOverload) {
+    using namespace test_CustomerHasherOverload;  // NOLINT
+
+    flat_hash_set<CustomKey> set;
+
+    const auto successful = set.emplace(42);
+    ASSERT_TRUE(successful.second);
+
+    const auto result = set.emplace(42);
+    ASSERT_FALSE(result.second);
+
+    for (int i = 0; i < 10; ++i) {
+        set.emplace(i);
+    }
+    for (int i = 0; i < 10; ++i) {
+        ASSERT_TRUE(set.contains({i}));
+    }
+    ASSERT_TRUE(set.contains(CustomKey{42}));
 }

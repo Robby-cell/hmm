@@ -313,8 +313,6 @@ class raw_hash_set {
         std::size_t first_deleted = -1;
 
         for (std::size_t i = 0; i < capacity(); ++i) {
-            // FIX 1: Correctly probe through slots instead of checking the same
-            // one.
             const std::size_t index =
                 detail::IndexWithoutProbing(h1 + i, capacity());
             if (ctrl_[index] == detail::slots::kEmpty) {

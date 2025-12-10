@@ -22,7 +22,7 @@
 #include <memory>
 #include <utility>
 
-#include "hmm/hasher.hpp"
+#include "hmm/city-hash.hpp"
 #include "hmm/internal/macros.hpp"
 #include "hmm/internal/raw-hash-map.hpp"
 
@@ -35,7 +35,7 @@ namespace hmm {
 template <typename K, typename V>
 struct HMM_NODISCARD MapPolicy;
 
-template <class Key, class Value, class Hash = Hasher<Key>,
+template <class Key, class Value, class Hash = CityHash<Key>,
           class KeyEqual = std::equal_to<Key>,
           class Alloc =
               std::allocator<typename MapPolicy<Key, Value>::slot_type>>
@@ -146,7 +146,7 @@ struct HMM_NODISCARD MapPolicy {
 
 #if HMM_HAS_CXX_17
 namespace pmr {
-template <class Key, class Value, class Hash = Hasher<Key>,
+template <class Key, class Value, class Hash = CityHash<Key>,
           class Eq = std::equal_to<Key>>
 using flat_hash_map = ::hmm::flat_hash_map<
     Key, Value, Hash, Eq,
