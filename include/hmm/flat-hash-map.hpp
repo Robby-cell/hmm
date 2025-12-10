@@ -41,7 +41,8 @@ template <class Key, class Value, class Hash = Hasher<Key>,
               std::allocator<typename MapPolicy<Key, Value>::slot_type>>
 class flat_hash_map : protected internal::raw_hash_map<MapPolicy<Key, Value>,
                                                        Hash, KeyEqual, Alloc> {
-    using Base = flat_hash_map::raw_hash_map;
+    using Base =
+        internal::raw_hash_map<MapPolicy<Key, Value>, Hash, KeyEqual, Alloc>;
 
    public:
     using policy_type = typename Base::policy_type;

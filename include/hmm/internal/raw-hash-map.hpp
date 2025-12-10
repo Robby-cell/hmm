@@ -29,7 +29,7 @@ namespace internal {
 
 template <class Policy, class Hash, class Eq, class Alloc>
 class raw_hash_map : protected raw_hash_set<Policy, Hash, Eq, Alloc> {
-    using Base = raw_hash_map::raw_hash_set;
+    using Base = raw_hash_set<Policy, Hash, Eq, Alloc>;
 
    public:
     using policy_type = typename Base::policy_type;

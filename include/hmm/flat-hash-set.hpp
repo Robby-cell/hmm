@@ -41,7 +41,7 @@ template <class Contained, class Hash = Hasher<Contained>,
               std::allocator<typename SetPolicy<Contained>::slot_type>>
 class flat_hash_set
     : protected internal::raw_hash_set<SetPolicy<Contained>, Hash, Eq, Alloc> {
-    using Base = flat_hash_set::raw_hash_set;
+    using Base = internal::raw_hash_set<SetPolicy<Contained>, Hash, Eq, Alloc>;
 
    public:
     using policy_type = typename Base::policy_type;

@@ -28,8 +28,7 @@ int main() {
     }
 
     {
-        hmm::pmr::flat_hash_map<int, std::string> map(
-            std::pmr::polymorphic_allocator<std::byte>{&resource});
+        hmm::pmr::flat_hash_map<int, std::string> map(&resource);
         static constexpr auto Count = 10;
         for (int i = 1; i <= Count; ++i) {
             map[i] = std::format("{:x}", i * 2);
