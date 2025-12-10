@@ -13,7 +13,8 @@ int main() {
 
     {
         // Map that uses pmr allocator
-        hmm::pmr::flat_hash_map<int, int> map(&resource);
+        hmm::pmr::flat_hash_map<int, int> map(
+            std::pmr::polymorphic_allocator<std::byte>{&resource});
 
         static constexpr auto Count = 10;
         for (int i = 1; i <= Count; ++i) {
@@ -27,7 +28,8 @@ int main() {
     }
 
     {
-        hmm::pmr::flat_hash_map<int, std::string> map(&resource);
+        hmm::pmr::flat_hash_map<int, std::string> map(
+            std::pmr::polymorphic_allocator<std::byte>{&resource});
         static constexpr auto Count = 10;
         for (int i = 1; i <= Count; ++i) {
             map[i] = std::format("{:x}", i * 2);
