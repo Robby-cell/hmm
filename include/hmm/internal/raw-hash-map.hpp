@@ -17,7 +17,6 @@
 #ifndef HMM_HMM_INTERNAL_RAW_HASH_MAP_HPP
 #define HMM_HMM_INTERNAL_RAW_HASH_MAP_HPP
 
-#include <functional>
 #include <initializer_list>
 #include <stdexcept>
 
@@ -28,14 +27,11 @@
 namespace hmm {
 namespace internal {
 
-template <class Policy, class Hash = std::hash<typename Policy::key_type>,
-          class Eq = std::equal_to<typename Policy::key_type>,
-          class Alloc = std::allocator<typename Policy::value_type>>
+template <class Policy, class Hash, class Eq, class Alloc>
 class raw_hash_map : protected raw_hash_set<Policy, Hash, Eq, Alloc> {
-    // using Base = raw_hash_map::raw_hash_set;
-    using Base = raw_hash_set<Policy, Hash, Eq, Alloc>;
+    using Base = raw_hash_map::raw_hash_set;
 
-   protected:
+   public:
     using policy_type = typename Base::policy_type;
     using hasher_type = typename Base::hasher_type;
     using key_equal = typename Base::key_equal;
@@ -49,9 +45,6 @@ class raw_hash_map : protected raw_hash_set<Policy, Hash, Eq, Alloc> {
     using slot_traits = typename Base::slot_traits;
     using pointer = typename Base::pointer;
     using allocator_type = typename Base::allocator_type;
-
-    using typename Base::Control;
-    using typename Base::Slot;
 
     using const_iterator = typename Base::const_iterator;
     using iterator = typename Base::iterator;
