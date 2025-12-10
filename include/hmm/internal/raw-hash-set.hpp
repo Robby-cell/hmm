@@ -212,7 +212,7 @@ class raw_hash_set {
     }
 
     HMM_CONSTEXPR_20 explicit raw_hash_set(const slot_allocator& alloc)
-        : members_(Hash{}, Eq{}, alloc, CtrlAllocator{}) {}
+        : members_(Hash{}, Eq{}, alloc, CtrlAllocator{alloc}) {}
 
     HMM_CONSTEXPR_20 ~raw_hash_set() {
         clear_and_deallocate();
