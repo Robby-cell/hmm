@@ -28,20 +28,22 @@ using uint64 = uint64_t;
 using uint32 = uint32_t;
 using uint128 = std::pair<uint64, uint64>;
 
-static const uint64 k0 = 0xc3a5c85c97cb3127ULL;
-static const uint64 k1 = 0xb492b66fbe98f273ULL;
-static const uint64 k2 = 0x9ae16a3b2f90404fULL;
-static const uint64 kMul = 0x9ddfea08eb382d69ULL;
+namespace {
 
-static inline uint64 Rotate(uint64 val, int shift) {
+constexpr uint64 k0 = 0xc3a5c85c97cb3127ULL;
+constexpr uint64 k1 = 0xb492b66fbe98f273ULL;
+constexpr uint64 k2 = 0x9ae16a3b2f90404fULL;
+constexpr uint64 kMul = 0x9ddfea08eb382d69ULL;
+
+inline uint64 Rotate(uint64 val, int shift) {
     return shift == 0 ? val : ((val >> shift) | (val << (64 - shift)));
 }
 
-static inline uint64 ShiftMix(uint64 val) {
+inline uint64 ShiftMix(uint64 val) {
     return val ^ (val >> 47);
 }
 
-static inline uint64 Hash128to64(uint128 x) {
+inline uint64 Hash128to64(uint128 x) {
     uint64 a = (x.first ^ x.second) * kMul;
     a ^= (a >> 47);
     uint64 b = (x.second ^ a) * kMul;
@@ -50,23 +52,23 @@ static inline uint64 Hash128to64(uint128 x) {
     return b;
 }
 
-static inline uint64 Fetch64(const char* p) {
+inline uint64 Fetch64(const char* p) {
     uint64 result;
     std::memcpy(&result, p, sizeof(result));
     return result;
 }
 
-static inline uint32 Fetch32(const char* p) {
+inline uint32 Fetch32(const char* p) {
     uint32 result;
     std::memcpy(&result, p, sizeof(result));
     return result;
 }
 
-static inline uint64 HashLen16(uint64 u, uint64 v) {
+inline uint64 HashLen16(uint64 u, uint64 v) {
     return Hash128to64({u, v});
 }
 
-static inline uint64 HashLen16(uint64 u, uint64 v, uint64 mul) {
+inline uint64 HashLen16(uint64 u, uint64 v, uint64 mul) {
     uint64 a = (u ^ v) * mul;
     a ^= (a >> 47);
     uint64 b = (v ^ a) * mul;
@@ -75,7 +77,7 @@ static inline uint64 HashLen16(uint64 u, uint64 v, uint64 mul) {
     return b;
 }
 
-static uint64 HashLen0to16(const char* s, size_t len) {
+uint64 HashLen0to16(const char* s, size_t len) {
     if (len >= 8) {
         uint64 mul = k2 + len * 2;
         uint64 a = Fetch64(s) + k2;
@@ -100,7 +102,7 @@ static uint64 HashLen0to16(const char* s, size_t len) {
     return k2;
 }
 
-static uint64 HashLen17to32(const char* s, size_t len) {
+uint64 HashLen17to32(const char* s, size_t len) {
     uint64 mul = k2 + len * 2;
     uint64 a = Fetch64(s) * k1;
     uint64 b = Fetch64(s + 8);
@@ -110,7 +112,7 @@ static uint64 HashLen17to32(const char* s, size_t len) {
                      a + Rotate(b + k2, 18) + c, mul);
 }
 
-static uint64 HashLen33to64(const char* s, size_t len) {
+uint64 HashLen33to64(const char* s, size_t len) {
     uint64 z = Fetch64(s + 24);
     uint64 a = Fetch64(s) + (len + Fetch64(s + len - 16)) * k0;
     uint64 b = Rotate(a + z, 52);
@@ -133,8 +135,8 @@ static uint64 HashLen33to64(const char* s, size_t len) {
     return ShiftMix(r * k0 + vs) * k2;
 }
 
-static uint64 WeakHashLen32WithSeeds(uint64 w, uint64 x, uint64 y, uint64 z,
-                                     uint64 a, uint64 b) {
+uint64 WeakHashLen32WithSeeds(uint64 w, uint64 x, uint64 y, uint64 z, uint64 a,
+                              uint64 b) {
     a += w;
     b = Rotate(b + a + z, 21);
     uint64 c = a;
@@ -144,12 +146,12 @@ static uint64 WeakHashLen32WithSeeds(uint64 w, uint64 x, uint64 y, uint64 z,
     return HashLen16(c, a + z, b);
 }
 
-static uint64 WeakHashLen32WithSeeds(const char* s, uint64 a, uint64 b) {
+uint64 WeakHashLen32WithSeeds(const char* s, uint64 a, uint64 b) {
     return WeakHashLen32WithSeeds(Fetch64(s), Fetch64(s + 8), Fetch64(s + 16),
                                   Fetch64(s + 24), a, b);
 }
 
-static uint64 CityHash64(const char* s, size_t len) {
+uint64 CityHash64(const char* s, size_t len) {
     if (len <= 16) {
         return HashLen0to16(s, len);
     }
@@ -187,10 +189,11 @@ static uint64 CityHash64(const char* s, size_t len) {
                      HashLen16(x, z) + w);
 }
 
-static uint64 CityHash64WithSeed(const char* s, size_t len, uint64 seed) {
+uint64 CityHash64WithSeed(const char* s, size_t len, uint64 seed) {
     return CityHash64(s, len) * k1 + Rotate(seed ^ k0, 41);
 }
 
+}  // namespace
 }  // namespace internal
 }  // namespace hmm
 
