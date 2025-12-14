@@ -65,7 +65,7 @@ class flat_hash_set
     HMM_CONSTEXPR_20 flat_hash_set(
         std::initializer_list<slot_type> initial,
         const allocator_type& alloc = allocator_type())
-        : Base(initial, alloc) {}
+        : Base(initial.begin(), initial.end(), alloc) {}
 
     template <class Iter, class Sentinel>
     HMM_CONSTEXPR_20 flat_hash_set(
@@ -81,15 +81,31 @@ class flat_hash_set
     using Base::cbegin;
     using Base::cend;
     using Base::clear;
-    using Base::contains;
     using Base::emplace;
     using Base::empty;
     using Base::end;
     using Base::erase;
-    using Base::find;
     using Base::insert;
     using Base::reserve;
     using Base::size;
+
+    HMM_NODISCARD HMM_CONSTEXPR_20 iterator find(const key_type& key) const {
+        return Base::find(key);
+    }
+
+    HMM_NODISCARD HMM_CONSTEXPR_20 bool contains(const key_type& key) const {
+        return Base::contains(key);
+    }
+
+    template <typename K>
+    HMM_NODISCARD HMM_CONSTEXPR_20 iterator find(const K& key) const {
+        return Base::find(key);
+    }
+
+    template <typename K>
+    HMM_NODISCARD HMM_CONSTEXPR_20 bool contains(const K& key) const {
+        return Base::contains(key);
+    }
 };
 
 template <typename T>
