@@ -70,6 +70,8 @@ class raw_hash_set {
     template <typename Value>
     class HMM_NODISCARD iterator_impl {
         friend raw_hash_set;
+        template <typename>
+        friend class iterator_impl;
 
        public:
         using iterator_category = std::forward_iterator_tag;
@@ -80,6 +82,7 @@ class raw_hash_set {
 
         constexpr iterator_impl() = default;
 
+        // Conversion Constructor (Mutable -> Const)
         template <typename OtherValue, typename = typename std::enable_if<
                                            (std::is_const<Value>::value &&
                                             !std::is_const<OtherValue>::value),
@@ -123,8 +126,6 @@ class raw_hash_set {
         constexpr iterator_impl(Control* ctrl, slot_type* slot,
                                 Control* end_ctrl)
             : ctrl_(ctrl), slot_(slot), end_ctrl_(end_ctrl) {}
-
-        friend class raw_hash_set;
 
         HMM_CONSTEXPR_14 void skip_empty_or_deleted() {
             while (ctrl_ != end_ctrl_ && *ctrl_ < 0) {
