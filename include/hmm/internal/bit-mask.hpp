@@ -56,23 +56,24 @@ inline uint32_t CountTrailingZeros(uint32_t n) {
 // Wrapper for the result of a SIMD comparison
 class BitMask {
    public:
-    explicit BitMask(uint32_t mask) : mask_(mask) {}
+    constexpr explicit BitMask(uint32_t mask) : mask_(mask) {}
 
     // Iterator-like interface for "for (auto i : mask)" loops
-    BitMask begin() const {
+    constexpr BitMask begin() const {
         return *this;
     }
+
     uint32_t first_index() const {
         return CountTrailingZeros(mask_);
     }
 
     // Clear the lowest set bit
-    BitMask& operator++() {
+    HMM_CONSTEXPR_14 BitMask& operator++() {
         mask_ &= (mask_ - 1);
         return *this;
     }
 
-    explicit operator bool() const {
+    constexpr explicit operator bool() const {
         return mask_ != 0;
     }
 
