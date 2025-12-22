@@ -57,7 +57,7 @@ class flat_hash_set
     using pointer = typename Base::pointer;
     using allocator_type = typename Base::allocator_type;
 
-    using iterator = typename Base::iterator;
+    using iterator = typename Base::const_iterator;
     using const_iterator = typename Base::const_iterator;
 
     HMM_CONSTEXPR_20 flat_hash_set() = default;
@@ -65,7 +65,7 @@ class flat_hash_set
     HMM_CONSTEXPR_20 flat_hash_set(
         std::initializer_list<slot_type> initial,
         const allocator_type& alloc = allocator_type())
-        : Base(initial, alloc) {}
+        : Base(initial.begin(), initial.end(), alloc) {}
 
     template <class Iter, class Sentinel>
     HMM_CONSTEXPR_20 flat_hash_set(
@@ -81,15 +81,51 @@ class flat_hash_set
     using Base::cbegin;
     using Base::cend;
     using Base::clear;
-    using Base::contains;
-    using Base::emplace;
     using Base::empty;
     using Base::end;
     using Base::erase;
-    using Base::find;
-    using Base::insert;
     using Base::reserve;
     using Base::size;
+
+    std::pair<iterator, bool> insert(const value_type& value) {
+        auto res = Base::insert(value);
+        return {res.first, res.second};
+    }
+    std::pair<iterator, bool> insert(value_type&& value) {
+        auto res = Base::insert(std::move(value));
+        return {res.first, res.second};
+    }
+    template <class InputIt>
+    void insert(InputIt first, InputIt last) {
+        Base::insert(first, last);
+    }
+    void insert(std::initializer_list<value_type> ilist) {
+        Base::insert(ilist.begin(), ilist.end());
+    }
+
+    template <class... Args>
+    std::pair<iterator, bool> emplace(Args&&... args) {
+        auto res = Base::emplace(std::forward<Args>(args)...);
+        return {res.first, res.second};
+    }
+
+    HMM_NODISCARD HMM_CONSTEXPR_20 iterator find(const key_type& key) const {
+        return Base::find(key);
+    }
+
+    HMM_NODISCARD HMM_CONSTEXPR_20 bool contains(const key_type& key) const {
+        return Base::contains(key);
+    }
+
+    template <typename K>
+    HMM_NODISCARD HMM_CONSTEXPR_20 iterator find(const K& key) const {
+        return Base::find(key);
+    }
+
+    template <typename K>
+    HMM_NODISCARD HMM_CONSTEXPR_20 bool contains(const K& key) const {
+        return Base::contains(key);
+    }
 };
 
 template <typename T>

@@ -19,7 +19,6 @@
 
 #include "hmm/internal/city-hash-mixers.hpp"
 #include "hmm/internal/macros.hpp"
-#include "internal/macros.hpp"
 
 namespace hmm {
 

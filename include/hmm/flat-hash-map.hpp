@@ -67,7 +67,7 @@ class flat_hash_map : protected internal::raw_hash_map<MapPolicy<Key, Value>,
     HMM_CONSTEXPR_20 flat_hash_map(
         std::initializer_list<slot_type> initial,
         const allocator_type& alloc = allocator_type())
-        : Base(initial, alloc) {}
+        : Base(initial.begin(), initial.end(), alloc) {}
 
     template <class Iter, class Sentinel>
     HMM_CONSTEXPR_20 flat_hash_map(
@@ -83,16 +83,69 @@ class flat_hash_map : protected internal::raw_hash_map<MapPolicy<Key, Value>,
     using Base::cbegin;
     using Base::cend;
     using Base::clear;
+    using Base::emplace;
     using Base::empty;
     using Base::end;
     using Base::erase;
-    using Base::find;
     using Base::insert;
-    using Base::size;
-    using Base::operator[];
-    using Base::at;
-    using Base::contains;
     using Base::reserve;
+    using Base::size;
+
+    HMM_NODISCARD HMM_CONSTEXPR_20 iterator find(const key_type& key) {
+        return Base::find(key);
+    }
+    HMM_NODISCARD HMM_CONSTEXPR_20 const_iterator
+    find(const key_type& key) const {
+        return Base::find(key);
+    }
+    HMM_NODISCARD HMM_CONSTEXPR_20 bool contains(const key_type& key) const {
+        return Base::contains(key);
+    }
+
+    template <typename K>
+    HMM_NODISCARD HMM_CONSTEXPR_20 iterator find(const K& key) {
+        return Base::find(key);
+    }
+    template <typename K>
+    HMM_NODISCARD HMM_CONSTEXPR_20 const_iterator find(const K& key) const {
+        return Base::find(key);
+    }
+
+    template <typename K>
+    HMM_NODISCARD HMM_CONSTEXPR_20 bool contains(const K& key) const {
+        return Base::contains(key);
+    }
+
+    template <class K, class... Args>
+    HMM_CONSTEXPR_20 std::pair<iterator, bool> try_emplace(K&& key,
+                                                           Args&&... args) {
+        return Base::try_emplace(std::forward<K>(key),
+                                 std::forward<Args>(args)...);
+    }
+
+    HMM_NODISCARD HMM_CONSTEXPR_20 mapped_type& operator[](
+        const key_type& key) {
+        return try_emplace(key).first->second;
+    }
+    HMM_NODISCARD HMM_CONSTEXPR_20 mapped_type& operator[](key_type&& key) {
+        return try_emplace(std::move(key)).first->second;
+    }
+
+    HMM_NODISCARD HMM_CONSTEXPR_20 mapped_type& at(const key_type& key) {
+        auto it = find(key);
+        if (it == end()) {
+            throw std::out_of_range("flat_hash_map::at");
+        }
+        return it->second;
+    }
+    HMM_NODISCARD HMM_CONSTEXPR_20 const mapped_type& at(
+        const key_type& key) const {
+        auto it = find(key);
+        if (it == end()) {
+            throw std::out_of_range("flat_hash_map::at");
+        }
+        return it->second;
+    }
 };
 
 template <typename K, typename V>
