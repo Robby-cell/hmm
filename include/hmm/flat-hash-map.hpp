@@ -33,7 +33,7 @@
 namespace hmm {
 
 template <typename K, typename V>
-struct HMM_NODISCARD MapPolicy;
+struct MapPolicy;
 
 template <class Key, class Value, class Hash = CityHash<Key>,
           class KeyEqual = std::equal_to<Key>,
@@ -149,7 +149,7 @@ class flat_hash_map : protected internal::raw_hash_map<MapPolicy<Key, Value>,
 };
 
 template <typename K, typename V>
-struct HMM_NODISCARD MapPolicy {
+struct MapPolicy {
     using key_type = K;
     using mapped_type = V;
     using value_type = std::pair<const K, V>;

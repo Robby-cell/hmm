@@ -82,7 +82,7 @@ class raw_hash_map : protected raw_hash_set<Policy, Hash, Eq, Alloc> {
         return Base::erase(pos);
     }
 
-    HMM_CONSTEXPR_20 std::size_t erase(const key_type& key) {
+    HMM_CONSTEXPR_20 size_type erase(const key_type& key) {
         return Base::erase_element(key);
     }
 

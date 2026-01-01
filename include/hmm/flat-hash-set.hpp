@@ -33,7 +33,7 @@
 namespace hmm {
 
 template <typename T>
-struct HMM_NODISCARD SetPolicy;
+struct SetPolicy;
 
 template <class Contained, class Hash = CityHash<Contained>,
           class Eq = std::equal_to<Contained>,
@@ -129,7 +129,7 @@ class flat_hash_set
 };
 
 template <typename T>
-struct HMM_NODISCARD SetPolicy {
+struct SetPolicy {
     using key_type = T;
     using mapped_type = void;
     using value_type = T;

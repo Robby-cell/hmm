@@ -67,7 +67,7 @@ class raw_hash_set {
 
    public:
     template <typename Value>
-    class HMM_NODISCARD iterator_impl {
+    class iterator_impl {
         friend raw_hash_set;
         template <typename>
         friend class iterator_impl;
@@ -481,8 +481,7 @@ class raw_hash_set {
         return it;
     }
 
-    HMM_NODISCARD HMM_CONSTEXPR_20 size_type
-    erase_element(const key_type& key) {
+    HMM_CONSTEXPR_20 size_type erase_element(const key_type& key) {
         const auto it = find(key);
         if (it == end()) {
             return 0;
