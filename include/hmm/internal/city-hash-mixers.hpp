@@ -22,7 +22,7 @@
 #include <utility>
 #include <vector>
 
-#include "hmm/internal/city-hash-impl.hpp"
+#include "hmm/internal/city-hash-fwd.hpp"
 #include "hmm/internal/macros.hpp"
 
 namespace hmm {

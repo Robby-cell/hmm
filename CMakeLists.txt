@@ -4,6 +4,7 @@ project(hmm VERSION 0.1.0 LANGUAGES CXX)
 # Options for consumers, done perfectly.
 option(HMM_BUILD_TESTS "Build the tests for hmm" OFF)
 option(HMM_BUILD_EXAMPLES "Build the examples for hmm" OFF)
+option(HMM_HASH_IMPL_INLINE "Provide the hash function inline, rather than compiled in their own translation unit" OFF)
 
 # =============================================================================
 # 1. LIBRARY TARGET DEFINITION
@@ -11,14 +12,21 @@ option(HMM_BUILD_EXAMPLES "Build the examples for hmm" OFF)
 
 # Create the INTERFACE library target. This is a "virtual" target for a
 # header-only library, used to attach properties to.
-add_library(hmm INTERFACE)
+if (HMM_HASH_IMPL_INLINE)
+    add_library(hmm INTERFACE)
+else ()
+    set(hmm_SOURCES src/city-hash.cc)
+    add_library(hmm STATIC)
+    target_sources(hmm PRIVATE ${hmm_SOURCES})
+    target_compile_definitions(hmm PUBLIC HMM_HASH_IMPL_INLINE=1)
+endif ()
 
 # (Best Practice) Create a namespaced alias. Consumers should link to hmm::hmm.
 # This prevents target name collisions in larger projects.
 add_library(hmm::hmm ALIAS hmm)
 
 # Attach properties to the target. These will be inherited by anything that links to it.
-target_include_directories(hmm INTERFACE
+target_include_directories(hmm PUBLIC
     # This path is used when building via FetchContent or add_subdirectory()
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 
