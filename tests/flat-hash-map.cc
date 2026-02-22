@@ -8,7 +8,10 @@
 #include <string>
 #include <utility>
 
+#include "test-shared.hpp"
+
 using hmm::flat_hash_map;
+using namespace hmm::testing;
 
 // =========================================================================
 // 1. Construction and Assignment
@@ -54,7 +57,8 @@ TEST(FlatHashMapTest, MoveConstruction) {
     EXPECT_EQ(dest.size(), 1);
     EXPECT_EQ(dest.at("key"), "value");
 
-    // Source should be empty (or valid but unspecified state)
+    // Source should be empty (or valid but unspecified state, which should be
+    // empty, to avoid invalid iterators)
     EXPECT_TRUE(source.empty());
 }
 
@@ -99,7 +103,6 @@ TEST(FlatHashMapTest, EraseByKey) {
     EXPECT_EQ(map.erase(5), 1);   // Returns count of removed elements
     EXPECT_EQ(map.erase(99), 0);  // Returns 0 if not found
 
-    // Replaced map.count(5) with find check since count() is missing
     EXPECT_EQ(map.find(5), map.end());
     EXPECT_EQ(map.size(), 9);
 }
@@ -115,7 +118,6 @@ TEST(FlatHashMapTest, Clear) {
     map.clear();
 
     EXPECT_TRUE(map.empty());
-    EXPECT_EQ(map.size(), 0);
 }
 
 // =========================================================================
@@ -180,15 +182,6 @@ TEST(FlatHashMapTest, Reserve) {
 // 6. Collision Resolution
 // =========================================================================
 
-// A hasher that forces collisions by returning the same hash for everything
-namespace {
-struct BadHash {
-    size_t operator()(int) const {
-        return 0;
-    }
-};
-}  // namespace
-
 TEST(FlatHashMapTest, MassiveCollisions) {
     // This forces the map to use its probing strategy (linear, robin hood,
     // etc.)
@@ -249,32 +242,6 @@ TEST(FlatHashMapTest, ConstIterator) {
 // =========================================================================
 // 8. Object Lifetime (Leak Check)
 // =========================================================================
-
-namespace {
-struct LifecycleTracker {
-    static inline int constructions = 0;
-    static inline int destructions = 0;
-    int val;
-
-    LifecycleTracker(int v) : val(v) {
-        constructions++;
-    }
-    LifecycleTracker(const LifecycleTracker& o) : val(o.val) {
-        constructions++;
-    }
-    LifecycleTracker(LifecycleTracker&& o) noexcept : val(o.val) {
-        constructions++;
-    }
-    ~LifecycleTracker() {
-        destructions++;
-    }
-
-    static void reset() {
-        constructions = 0;
-        destructions = 0;
-    }
-};
-}  // namespace
 
 TEST(FlatHashMapTest, ObjectLifetimeAndLeaks) {
     LifecycleTracker::reset();

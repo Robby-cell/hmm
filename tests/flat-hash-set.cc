@@ -9,7 +9,10 @@
 #include <utility>
 #include <vector>
 
+#include "test-shared.hpp"
+
 using hmm::flat_hash_set;
+using namespace hmm::testing;
 
 // =========================================================================
 // 1. Construction and Assignment
@@ -166,6 +169,7 @@ TEST(FlatHashSetTest, SupportsMoveOnlyTypes) {
 // 5. Custom Types and Hashers
 // =========================================================================
 
+namespace {
 struct Point {
     int x, y;
     bool operator==(const Point& other) const {
@@ -178,6 +182,7 @@ struct PointHasher {
         return std::hash<int>{}(p.x) ^ (std::hash<int>{}(p.y) << 1);
     }
 };
+}  // namespace
 
 TEST(FlatHashSetTest, CustomKeyAndHasher) {
     flat_hash_set<Point, PointHasher> set;
@@ -217,13 +222,6 @@ TEST(FlatHashSetTest, AutomaticResizing) {
 // =========================================================================
 // 7. Collision Resolution
 // =========================================================================
-
-// Forces all keys to bucket 0
-struct BadHash {
-    size_t operator()(int) const {
-        return 0;
-    }
-};
 
 TEST(FlatHashSetTest, MassiveCollisions) {
     flat_hash_set<int, BadHash> set;
@@ -270,43 +268,6 @@ TEST(FlatHashSetTest, IteratorTraversal) {
 // =========================================================================
 // 9. Object Lifetime (Leak Check)
 // =========================================================================
-
-namespace {
-struct LifecycleTracker {
-    static inline int constructions = 0;
-    static inline int destructions = 0;
-    int val;
-
-    LifecycleTracker(int v) : val(v) {
-        constructions++;
-    }
-    LifecycleTracker(const LifecycleTracker& o) : val(o.val) {
-        constructions++;
-    }
-    LifecycleTracker(LifecycleTracker&& o) noexcept : val(o.val) {
-        constructions++;
-    }
-
-    bool operator==(const LifecycleTracker& other) const {
-        return val == other.val;
-    }
-
-    ~LifecycleTracker() {
-        destructions++;
-    }
-
-    static void reset() {
-        constructions = 0;
-        destructions = 0;
-    }
-};
-
-struct LifecycleHasher {
-    size_t operator()(const LifecycleTracker& l) const {
-        return std::hash<int>{}(l.val);
-    }
-};
-}  // namespace
 
 TEST(FlatHashSetTest, ObjectLifetimeAndLeaks) {
     LifecycleTracker::reset();
