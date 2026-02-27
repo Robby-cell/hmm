@@ -66,7 +66,7 @@ class raw_hash_set {
     static constexpr size_t kGroupWidth = Group::kWidth;
 
    public:
-    template <typename Value>
+    template <typename Traits>
     class iterator_impl {
         friend raw_hash_set;
         template <typename>
@@ -76,17 +76,18 @@ class raw_hash_set {
         using iterator_category = std::forward_iterator_tag;
         using value_type = typename raw_hash_set::value_type;
         using difference_type = std::ptrdiff_t;
-        using pointer = value_type*;
-        using reference = value_type&;
+        using pointer = typename Traits::template pointer<value_type>;
+        using reference = typename Traits::template reference<value_type>;
 
         constexpr iterator_impl() = default;
 
         // Conversion Constructor (Mutable -> Const)
-        template <typename OtherValue, typename = typename std::enable_if<
-                                           (std::is_const<Value>::value &&
-                                            !std::is_const<OtherValue>::value),
-                                           void>::type>
-        constexpr iterator_impl(const iterator_impl<OtherValue>& other)
+        template <typename OtherTraits,
+                  typename = typename std::enable_if<(!OtherTraits::is_const ||
+                                                      (Traits::is_const &&
+                                                       OtherTraits::is_const)),
+                                                     void>::type>
+        constexpr iterator_impl(const iterator_impl<OtherTraits>& other)
             : ctrl_(other.ctrl_),
               slot_(other.slot_),
               end_ctrl_(other.end_ctrl_) {}
@@ -138,8 +139,28 @@ class raw_hash_set {
         Control* end_ctrl_{nullptr};
     };
 
-    using iterator = iterator_impl<value_type>;
-    using const_iterator = iterator_impl<const value_type>;
+    struct NormalIteratorTraits {
+        static constexpr bool is_const = false;
+
+        template <class T>
+        using pointer = T*;
+
+        template <class T>
+        using reference = T&;
+    };
+
+    struct ConstIteratorTraits {
+        static constexpr bool is_const = true;
+
+        template <class T>
+        using pointer = const T*;
+
+        template <class T>
+        using reference = const T&;
+    };
+
+    using iterator = iterator_impl<NormalIteratorTraits>;
+    using const_iterator = iterator_impl<ConstIteratorTraits>;
 
     struct HMM_NODISCARD FindInfo {
         std::size_t index;
