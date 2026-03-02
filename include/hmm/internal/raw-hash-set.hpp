@@ -27,20 +27,185 @@
 #include <utility>
 
 #include "hmm/internal/bit-mask.hpp"
+#include "hmm/internal/compressed-tuple.hpp"
 #include "hmm/internal/detail.hpp"
 #include "hmm/internal/macros.hpp"
 
 namespace hmm {
 namespace internal {
 
-// Trait: Checks if Hash/Equal have is_transparent
+/// @brief A wrapper union that prevents default initialization of a pointer.
+///
+/// This union is utilized to hold pointers that might point to uninitialized
+/// or manually managed memory regions. By wrapping the pointer in a union,
+/// the compiler avoids injecting implicit default initialization unless
+/// explicitly requested.
+///
+/// @tparam T The type of the underlying object being pointed to.
+template <class T>
+union MaybeUninitialized {
+    /// @brief Constructs the union with a provided pointer.
+    /// @param ptr The pointer to initialize the union with.
+    constexpr T* get() const noexcept {
+        return ptr_;
+    }
+
+    /// @brief Modifies the stored pointer.
+    /// @param ptr The new pointer value to store.
+    constexpr void set(T* ptr) noexcept {
+        ptr_ = ptr;
+    }
+
+    T* ptr_;
+};
+
+using ctrl_t = std::int8_t;
+
+/// @brief Manages the primary heap-allocated memory pointers for the hash set.
+///
+/// The hash set allocates a single contiguous block of memory. This structure
+/// keeps track of the two primary regions within that block: the control bytes
+/// (used for SIMD-accelerated metadata lookups) and the actual element slots.
+struct HeapPtrs {
+    /// @brief Gets the pointer to the array of control bytes.
+    HMM_NODISCARD constexpr ctrl_t* get_ctrl() const noexcept {
+        return ctrl_.get();
+    }
+
+    /// @brief Sets the pointer to the array of control bytes.
+    constexpr void set_ctrl(ctrl_t* ctrl) noexcept {
+        ctrl_.set(ctrl);
+    }
+
+    /// @brief Gets the weakly-typed pointer to the array of value slots.
+    HMM_NODISCARD constexpr void* get_slots() const noexcept {
+        return slots_.get();
+    }
+
+    /// @brief Sets the weakly-typed pointer to the array of value slots.
+    constexpr void set_slots(void* the_slots) noexcept {
+        slots_.set(the_slots);
+    }
+
+    MaybeUninitialized<ctrl_t> ctrl_{nullptr};
+    MaybeUninitialized<void> slots_{nullptr};
+};
+
+/// @brief Encapsulates the runtime sizing metrics of the hash set.
+struct SizeInfo {
+    size_t size_ = 0;  ///< The number of active, constructed elements.
+
+    size_t capacity_ =
+        0;  ///< The total number of allocated slots (must be a power of two).
+};
+
+/// @brief Centralized state object storing policy dependencies and table
+/// metadata.
+///
+/// Inherits from `CompressedTuple` to leverage Empty Base Class Optimization
+/// (EBCO). If `Hash`, `Eq`, or `Alloc` are stateless (e.g., standard functors),
+/// they consume zero bytes of memory, drastically reducing the overall
+/// footprint of the container.
+///
+/// @tparam Hash The hashing functor type.
+/// @tparam Eq The equality comparison functor type.
+/// @tparam Alloc The allocator type used for memory management.
+template <class Hash, class Eq, class Alloc>
+struct CommonMembers : detail::CompressedTuple<Hash, Eq, Alloc> {
+    using Base = detail::CompressedTuple<Hash, Eq, Alloc>;
+
+    /// @brief Forwarding constructor for dependencies.
+    template <
+        class H, class E, class A,
+        typename std::enable_if<std::is_convertible<H&&, Hash>::value &&
+                                    std::is_convertible<E&&, Eq>::value &&
+                                    std::is_convertible<A&&, Alloc>::value,
+                                int>::type = 0>
+    HMM_CONSTEXPR_20 inline CommonMembers(H&& h, E&& e, A&& a)
+        : Base{static_cast<H&&>(h), static_cast<E&&>(e), static_cast<A&&>(a)},
+          ptrs_{},
+          size_info_{} {}
+
+    /// @brief Default constructor. Value-initializes all sub-components.
+    CommonMembers() = default;
+
+    /// @brief Retrieves a mutable reference to the hashing functor.
+    constexpr Hash& get_hasher() noexcept {
+        return Base::template get<0, Hash>();
+    }
+
+    /// @brief Retrieves a const reference to the hashing functor.
+    constexpr const Hash& get_hasher() const noexcept {
+        return Base::template get<0, Hash>();
+    }
+
+    /// @brief Retrieves a mutable reference to the equality functor.
+    constexpr Eq& get_eq() noexcept {
+        return Base::template get<1, Eq>();
+    }
+
+    /// @brief Retrieves a const reference to the equality functor.
+    constexpr const Eq& get_eq() const noexcept {
+        return Base::template get<1, Eq>();
+    }
+
+    /// @brief Retrieves a mutable reference to the allocator.
+    constexpr Alloc& get_allocator() noexcept {
+        return Base::template get<2, Alloc>();
+    }
+
+    /// @brief Retrieves a const reference to the allocator.
+    constexpr const Alloc& get_allocator() const noexcept {
+        return Base::template get<2, Alloc>();
+    }
+
+    /// @brief Retrieves the control byte array pointer.
+    constexpr ctrl_t* get_ctrl() const noexcept {
+        return ptrs_.get_ctrl();
+    }
+
+    /// @brief Updates the control byte array pointer.
+    constexpr void set_ctrl(ctrl_t* ctrl) noexcept {
+        ptrs_.set_ctrl(ctrl);
+    }
+
+    /// @brief Retrieves the slot array pointer.
+    constexpr void* get_slots() const noexcept {
+        return ptrs_.get_slots();
+    }
+
+    /// @brief Updates the slot array pointer.
+    constexpr void set_slots(void* the_slots) noexcept {
+        ptrs_.set_slots(the_slots);
+    }
+
+    HeapPtrs ptrs_;
+    SizeInfo size_info_;
+};
+
+/// @brief Type trait to detect if a functor supports transparent heterogeneous
+/// lookup.
 template <typename T, typename = void>
 struct HasIsTransparent : std::false_type {};
+
 template <typename T>
 struct HasIsTransparent<T,
                         typename std::enable_if<T::is_transparent::value>::type>
     : std::true_type {};
 
+/// @brief The core SwissTable-style flat hash set implementation.
+///
+/// `raw_hash_set` uses open addressing with linear probing and SIMD-accelerated
+/// byte-level metadata scanning. It serves as the underlying backbone for
+/// both `flat_hash_set` and `flat_hash_map`.
+/// Memory is allocated in a single contiguous block containing both the 1-byte
+/// control group array and the tightly packed data slots array.
+///
+/// @tparam Policy Determines how keys and values are extracted (differentiates
+/// set vs map).
+/// @tparam Hash The hashing algorithm.
+/// @tparam Eq The equality operator.
+/// @tparam Alloc The allocator for allocating slots.
 template <class Policy, class Hash, class Eq, class Alloc>
 class raw_hash_set {
    public:
@@ -62,12 +227,15 @@ class raw_hash_set {
     using pointer = typename slot_traits::pointer;
 
    private:
-    using Control = std::int8_t;
+    using Members = CommonMembers<Hash, Eq, byte_allocator>;
+
     static constexpr size_t kGroupWidth = Group::kWidth;
 
    public:
+    /// @brief The underlying iterator implementation.
+    /// @tparam Traits Differentiates between const and mutable iterators.
     template <typename Traits>
-    class iterator_impl {
+    class BasicIterator {
         friend raw_hash_set;
         template <typename>
         friend class iterator_impl;
@@ -76,18 +244,22 @@ class raw_hash_set {
         using iterator_category = std::forward_iterator_tag;
         using value_type = typename raw_hash_set::value_type;
         using difference_type = std::ptrdiff_t;
-        using pointer = typename Traits::template pointer<value_type>;
-        using reference = typename Traits::template reference<value_type>;
+        using pointer =
+            typename std::conditional<Traits::is_const, const value_type*,
+                                      value_type*>::type;
+        using reference =
+            typename std::conditional<Traits::is_const, const value_type&,
+                                      value_type&>::type;
 
-        constexpr iterator_impl() = default;
+        constexpr BasicIterator() = default;
 
-        // Conversion Constructor (Mutable -> Const)
+        /// @brief Implicitly converts a mutable iterator to a const iterator.
         template <typename OtherTraits,
                   typename = typename std::enable_if<(!OtherTraits::is_const ||
                                                       (Traits::is_const &&
                                                        OtherTraits::is_const)),
                                                      void>::type>
-        constexpr iterator_impl(const iterator_impl<OtherTraits>& other)
+        constexpr BasicIterator(const BasicIterator<OtherTraits>& other)
             : ctrl_(other.ctrl_),
               slot_(other.slot_),
               end_ctrl_(other.end_ctrl_) {}
@@ -95,11 +267,12 @@ class raw_hash_set {
         HMM_NODISCARD constexpr reference operator*() const {
             return policy_type::value_from_slot(*slot_);
         }
+
         HMM_NODISCARD constexpr pointer operator->() const {
             return std::addressof(operator*());
         }
 
-        HMM_CONSTEXPR_14 iterator_impl& operator++() {
+        HMM_CONSTEXPR_14 BasicIterator& operator++() {
             do {
                 ++ctrl_;
                 ++slot_;
@@ -107,24 +280,23 @@ class raw_hash_set {
             return *this;
         }
 
-        HMM_CONSTEXPR_14 iterator_impl operator++(int) {
+        HMM_CONSTEXPR_14 BasicIterator operator++(int) {
             auto tmp = *this;
             ++(*this);
             return tmp;
         }
 
         HMM_NODISCARD constexpr bool operator==(
-            const iterator_impl& b) const noexcept {
+            const BasicIterator& b) const noexcept {
             return slot_ == b.slot_;
         }
         HMM_NODISCARD constexpr bool operator!=(
-            const iterator_impl& b) const noexcept {
+            const BasicIterator& b) const noexcept {
             return !this->operator==(b);
         }
 
        private:
-        constexpr iterator_impl(Control* ctrl, slot_type* slot,
-                                Control* end_ctrl)
+        constexpr BasicIterator(ctrl_t* ctrl, slot_type* slot, ctrl_t* end_ctrl)
             : ctrl_(ctrl), slot_(slot), end_ctrl_(end_ctrl) {}
 
         HMM_CONSTEXPR_14 void skip_empty_or_deleted() {
@@ -134,45 +306,39 @@ class raw_hash_set {
             }
         }
 
-        Control* ctrl_{nullptr};
+        ctrl_t* ctrl_{nullptr};
         slot_type* slot_{nullptr};
-        Control* end_ctrl_{nullptr};
+        ctrl_t* end_ctrl_{nullptr};
     };
 
     struct NormalIteratorTraits {
         static constexpr bool is_const = false;
-
-        template <class T>
-        using pointer = T*;
-
-        template <class T>
-        using reference = T&;
     };
 
     struct ConstIteratorTraits {
         static constexpr bool is_const = true;
-
-        template <class T>
-        using pointer = const T*;
-
-        template <class T>
-        using reference = const T&;
     };
 
-    using iterator = iterator_impl<NormalIteratorTraits>;
-    using const_iterator = iterator_impl<ConstIteratorTraits>;
+    using iterator = BasicIterator<NormalIteratorTraits>;
+    using const_iterator = BasicIterator<ConstIteratorTraits>;
 
+    /// @brief Returned by internal insertion preparations, containing index
+    /// routing data.
     struct HMM_NODISCARD FindInfo {
-        std::size_t index;
-        std::size_t full_hash;
-        bool found;
+        std::size_t index;  ///< The mapped slot index where the element exists
+                            ///< or should be inserted.
+        std::size_t full_hash;  ///< The pre-computed full 64-bit hash.
+        bool found;  ///< True if the key already exists at the target index.
     };
 
+    /// @brief Default constructs an empty hash set with no allocated memory.
     HMM_CONSTEXPR_20 raw_hash_set() = default;
 
+    /// @brief Constructs an empty hash set using a specific allocator.
     HMM_CONSTEXPR_20 explicit raw_hash_set(const allocator_type& alloc)
         : members_(Hash{}, Eq{}, byte_allocator(alloc)) {}
 
+    /// @brief Constructs a hash set from an iterator range.
     template <class Iter, class Sentinel>
     HMM_CONSTEXPR_20 raw_hash_set(
         Iter begin, Sentinel end,
@@ -181,34 +347,44 @@ class raw_hash_set {
         insert(begin, end);
     }
 
+    /// @brief Constructs a hash set from an initializer list.
     HMM_CONSTEXPR_20 raw_hash_set(
         std::initializer_list<value_type> init,
         const allocator_type& alloc = allocator_type())
         : raw_hash_set(init.begin(), init.end(), alloc) {}
 
+    /// @brief Destructs the container, destroying all elements and releasing
+    /// memory.
     HMM_CONSTEXPR_20 ~raw_hash_set() {
         clear_and_deallocate();
     }
 
+    /// @brief Move-constructs the hash set, transferring ownership of the
+    /// internal buffer.
     HMM_CONSTEXPR_20 raw_hash_set(raw_hash_set&& other) noexcept
-        : members_(std::move(other.members_)),
-          ctrl_(detail::exchange(other.ctrl_, nullptr)),
-          slots_(detail::exchange(other.slots_, nullptr)),
-          capacity_(detail::exchange(other.capacity_, 0)),
-          size_(detail::exchange(other.size_, 0)) {}
+        : members_(std::move(other.members_)) {
+        other.members_.set_ctrl(nullptr);
+        other.members_.set_slots(nullptr);
+        other.members_.size_info_.capacity_ = 0;
+        other.members_.size_info_.size_ = 0;
+    }
 
+    /// @brief Move-assigns the hash set, releasing old memory and transferring
+    /// ownership.
     HMM_CONSTEXPR_20 raw_hash_set& operator=(raw_hash_set&& other) noexcept {
         if (this != &other) {
             clear_and_deallocate();
             members_ = std::move(other.members_);
-            ctrl_ = detail::exchange(other.ctrl_, nullptr);
-            slots_ = detail::exchange(other.slots_, nullptr);
-            capacity_ = detail::exchange(other.capacity_, 0);
-            size_ = detail::exchange(other.size_, 0);
+            other.members_.set_ctrl(nullptr);
+            other.members_.set_slots(nullptr);
+            other.members_.size_info_.capacity_ = 0;
+            other.members_.size_info_.size_ = 0;
         }
         return *this;
     }
 
+    /// @brief Copy-constructs the hash set, duplicating elements into a new
+    /// allocation.
     raw_hash_set(const raw_hash_set& other)
         : members_(
               other.hasher(), other.equal(),
@@ -220,11 +396,11 @@ class raw_hash_set {
         }
     }
 
+    /// @brief Copy-assigns the hash set, destroying current elements and
+    /// copying new ones.
     raw_hash_set& operator=(const raw_hash_set& other) {
         if (this != &other) {
             clear();
-            // Note: Standard requires checking
-            // propagate_on_container_copy_assignment here.
             reserve(other.size());
             for (const auto& elem : other) {
                 insert(elem);
@@ -233,79 +409,106 @@ class raw_hash_set {
         return *this;
     }
 
+    /// @brief Returns an iterator to the first active element in the container.
     HMM_NODISCARD HMM_CONSTEXPR_20 iterator begin() {
         if (empty()) {
             return end();
         }
-        auto it = iterator(ctrl_, slots_, ctrl_ + capacity());
+        auto it = iterator(ctrl_ptr(), slots_ptr(), ctrl_ptr() + capacity());
         it.skip_empty_or_deleted();
         return it;
     }
+
+    /// @brief Returns a const iterator to the first active element.
     HMM_NODISCARD HMM_CONSTEXPR_20 const_iterator begin() const {
         if (empty()) {
             return end();
         }
-        auto it = const_iterator(ctrl_, slots_, ctrl_ + capacity());
+        auto it =
+            const_iterator(ctrl_ptr(), slots_ptr(), ctrl_ptr() + capacity());
         it.skip_empty_or_deleted();
         return it;
     }
+
+    /// @brief Returns a const iterator to the first active element.
     HMM_NODISCARD HMM_CONSTEXPR_20 const_iterator cbegin() const {
         return begin();
     }
 
+    /// @brief Returns an iterator representing the end of the container.
     HMM_NODISCARD HMM_CONSTEXPR_20 iterator end() {
-        return iterator(ctrl_ + capacity(), slots_ + capacity(),
-                        ctrl_ + capacity());
+        return iterator(ctrl_ptr() + capacity(), slots_ptr() + capacity(),
+                        ctrl_ptr() + capacity());
     }
+
+    /// @brief Returns a const iterator representing the end of the container.
     HMM_NODISCARD HMM_CONSTEXPR_20 const_iterator end() const {
-        return const_iterator(ctrl_ + capacity(), slots_ + capacity(),
-                              ctrl_ + capacity());
+        return const_iterator(ctrl_ptr() + capacity(), slots_ptr() + capacity(),
+                              ctrl_ptr() + capacity());
     }
+
+    /// @brief Returns a const iterator representing the end of the container.
     HMM_NODISCARD HMM_CONSTEXPR_20 const_iterator cend() const {
         return end();
     }
 
+    /// @brief Retrieves the number of elements currently stored in the set.
     HMM_NODISCARD constexpr size_type size() const noexcept {
-        return size_;
-    }
-    HMM_NODISCARD constexpr bool empty() const noexcept {
-        return size_ == 0;
-    }
-    HMM_NODISCARD constexpr size_type capacity() const noexcept {
-        return capacity_;
+        return members_.size_info_.size_;
     }
 
+    /// @brief Checks if the container has no elements.
+    HMM_NODISCARD constexpr bool empty() const noexcept {
+        return members_.size_info_.size_ == 0;
+    }
+
+    /// @brief Retrieves the total number of slots allocated in the underlying
+    /// buffer.
+    HMM_NODISCARD constexpr size_type capacity() const noexcept {
+        return members_.size_info_.capacity_;
+    }
+
+    /// @brief Destroys all elements but leaves the capacity unchanged.
     HMM_CONSTEXPR_20 void clear() {
-        if (!slots_) {
+        if (!slots_ptr()) {
             return;
         }
         clear_elements();
-        std::memset(ctrl_, detail::slots::kEmpty, capacity() + kGroupWidth);
-        size_ = 0;
+        std::memset(ctrl_ptr(), detail::slots::kEmpty,
+                    capacity() + kGroupWidth);
+        members_.size_info_.size_ = 0;
     }
 
-    // Insert Overloads
+    /// @brief Destroys all elements but leaves the capacity unchanged.
     std::pair<iterator, bool> insert(const value_type& value) {
         return emplace(value);
     }
+
+    /// @brief Inserts an element into the container via move mechanics.
     std::pair<iterator, bool> insert(value_type&& value) {
         return emplace(std::move(value));
     }
+
+    /// @brief Inserts a range of elements into the container.
     template <class InputIt>
     void insert(InputIt first, InputIt last) {
         for (; first != last; ++first) {
             emplace(*first);
         }
     }
+
+    /// @brief Inserts elements from an initializer list.
     void insert(std::initializer_list<value_type> ilist) {
         insert(ilist.begin(), ilist.end());
     }
 
-    // Reserve
+    /// @brief Proactively resizes the container to accommodate at least `count`
+    /// elements without rehashing.
     void reserve(size_type count) {
         if (count == 0) {
             return;
         }
+
         // capacity * 0.875 >= count
         size_type min_cap = (count * 8 + 6) / 7;
         size_type cap = 16;
@@ -317,7 +520,9 @@ class raw_hash_set {
         }
     }
 
-    // Lookup
+    /// @brief Locates an element matching the provided key.
+    /// @param key The key to look for.
+    /// @return An iterator to the element, or `end()` if not found.
     template <typename K>
     HMM_NODISCARD HMM_CONSTEXPR_20 iterator find(const K& key) noexcept {
         if (empty()) {
@@ -330,13 +535,14 @@ class raw_hash_set {
             detail::IndexWithoutProbing(detail::H1(full_hash), capacity());
 
         while (true) {
-            Group g = Group::Load(ctrl_ + index);
+            Group g = Group::Load(ctrl_ptr() + index);
             for (BitMask mask = g.Match(h2); mask; ++mask) {
                 size_t probe_index =
                     (index + mask.first_index()) & (capacity() - 1);
-                if (equal()(key, policy_type::key(slots_[probe_index]))) {
-                    return iterator(ctrl_ + probe_index, slots_ + probe_index,
-                                    ctrl_ + capacity());
+                if (equal()(key, policy_type::key(slots_ptr()[probe_index]))) {
+                    return iterator(ctrl_ptr() + probe_index,
+                                    slots_ptr() + probe_index,
+                                    ctrl_ptr() + capacity());
                 }
             }
             if (g.MatchEmpty()) {
@@ -349,6 +555,7 @@ class raw_hash_set {
         }
     }
 
+    /// @brief Locates an element matching the provided key (const context).
     template <typename K>
     HMM_NODISCARD HMM_CONSTEXPR_20 const_iterator
     find(const K& key) const noexcept {
@@ -361,14 +568,14 @@ class raw_hash_set {
             detail::IndexWithoutProbing(detail::H1(full_hash), capacity());
 
         while (true) {
-            Group g = Group::Load(ctrl_ + index);
+            Group g = Group::Load(ctrl_ptr() + index);
             for (BitMask mask = g.Match(h2); mask; ++mask) {
                 size_t probe_index =
                     (index + mask.first_index()) & (capacity() - 1);
-                if (equal()(key, policy_type::key(slots_[probe_index]))) {
-                    return const_iterator(ctrl_ + probe_index,
-                                          slots_ + probe_index,
-                                          ctrl_ + capacity());
+                if (equal()(key, policy_type::key(slots_ptr()[probe_index]))) {
+                    return const_iterator(ctrl_ptr() + probe_index,
+                                          slots_ptr() + probe_index,
+                                          ctrl_ptr() + capacity());
                 }
             }
             if (g.MatchEmpty()) {
@@ -381,12 +588,15 @@ class raw_hash_set {
         }
     }
 
-    // Standard Contains (allows implicit conversions)
+    /// @brief Checks if an element with the exact key type exists in the
+    /// container.
     HMM_NODISCARD bool contains(const key_type& key) const noexcept {
         return find(key) != end();
     }
 
-    // Transparent Contains
+    /// @brief Heterogeneous lookup to check if a key exists in the container.
+    /// @details Only enabled via SFINAE if both the Hash and Eq types define
+    /// `is_transparent`.
     template <
         typename K, typename H = Hash, typename E = Eq,
         typename = typename std::enable_if<HasIsTransparent<H>::value &&
@@ -395,7 +605,8 @@ class raw_hash_set {
         return find(key) != end();
     }
 
-    // Insertion & Emplacement
+    /// @brief Computes the target slot for an arbitrary key, determining if an
+    /// insertion is required.
     template <typename K>
     HMM_NODISCARD HMM_CONSTEXPR_20 FindInfo
     find_or_prepare_insert(const K& key) {
@@ -409,11 +620,11 @@ class raw_hash_set {
             detail::IndexWithoutProbing(detail::H1(full_hash), capacity());
 
         while (true) {
-            Group g = Group::Load(ctrl_ + index);
+            Group g = Group::Load(ctrl_ptr() + index);
             for (BitMask mask = g.Match(h2); mask; ++mask) {
                 size_t probe_index =
                     (index + mask.first_index()) & (capacity() - 1);
-                if (equal()(key, policy_type::key(slots_[probe_index]))) {
+                if (equal()(key, policy_type::key(slots_ptr()[probe_index]))) {
                     return {probe_index, full_hash, true};
                 }
             }
@@ -429,6 +640,8 @@ class raw_hash_set {
         }
     }
 
+    /// @brief Constructs an element in-place within the table using the
+    /// provided arguments.
     template <typename... Args>
     HMM_CONSTEXPR_20 std::pair<iterator, bool> emplace(Args&&... args) {
         if (needs_resize()) {
@@ -441,17 +654,21 @@ class raw_hash_set {
 
         auto info = find_or_prepare_insert(key);
         if (info.found) {
-            return {iterator(ctrl_ + info.index, slots_ + info.index,
-                             ctrl_ + capacity()),
+            return {iterator(ctrl_ptr() + info.index, slots_ptr() + info.index,
+                             ctrl_ptr() + capacity()),
                     false};
         }
 
         insert_at_index(info.index, info.full_hash, std::move(temp));
-        return {iterator(ctrl_ + info.index, slots_ + info.index,
-                         ctrl_ + capacity()),
+        return {iterator(ctrl_ptr() + info.index, slots_ptr() + info.index,
+                         ctrl_ptr() + capacity()),
                 true};
     }
 
+    /// @brief Attempts to construct an element in-place only if the provided
+    /// key does not already exist.
+    /// @details Critical for mapping, allowing piecewise construction where the
+    /// value relies on deferred creation.
     template <class K, class... Args>
     HMM_CONSTEXPR_20 std::pair<iterator, bool> try_emplace(K&& key,
                                                            Args&&... args) {
@@ -461,8 +678,8 @@ class raw_hash_set {
 
         auto info = find_or_prepare_insert(key);
         if (info.found) {
-            return {iterator(ctrl_ + info.index, slots_ + info.index,
-                             ctrl_ + capacity()),
+            return {iterator(ctrl_ptr() + info.index, slots_ptr() + info.index,
+                             ctrl_ptr() + capacity()),
                     false};
         }
 
@@ -471,37 +688,41 @@ class raw_hash_set {
         ReboundAlloc alloc(byte_alloc());
 
         policy_type::construct(
-            alloc, &slots_[info.index], std::piecewise_construct,
+            alloc, &slots_ptr()[info.index], std::piecewise_construct,
             std::forward_as_tuple(std::forward<K>(key)),
             std::forward_as_tuple(std::forward<Args>(args)...));
 
         finish_insert(info.index, info.full_hash);
-        return {iterator(ctrl_ + info.index, slots_ + info.index,
-                         ctrl_ + capacity()),
+        return {iterator(ctrl_ptr() + info.index, slots_ptr() + info.index,
+                         ctrl_ptr() + capacity()),
                 true};
     }
 
-    // Erasure
+    /// @brief Erases the element at the specified iterator position.
+    /// @return An iterator to the element immediately following the removed
+    /// element.
     HMM_CONSTEXPR_20 iterator erase(const_iterator cit) {
-        std::size_t index = cit.slot_ - slots_;
+        std::size_t index = cit.slot_ - slots_ptr();
 
         using ReboundAlloc = typename std::allocator_traits<
             allocator_type>::template rebind_alloc<slot_type>;
         ReboundAlloc alloc(byte_alloc());
-        policy_type::destroy(alloc, &slots_[index]);
+        policy_type::destroy(alloc, &slots_ptr()[index]);
 
-        ctrl_[index] = detail::slots::kDeleted;
+        ctrl_ptr()[index] = detail::slots::kDeleted;
         if (index < kGroupWidth) {
-            ctrl_[capacity() + index] = detail::slots::kDeleted;
+            ctrl_ptr()[capacity() + index] = detail::slots::kDeleted;
         }
 
-        --size_;
+        --members_.size_info_.size_;
         auto it = iterator(cit.ctrl_, const_cast<slot_type*>(cit.slot_),
                            cit.end_ctrl_);
         it.skip_empty_or_deleted();
         return it;
     }
 
+    /// @brief Erases the element matching the provided key.
+    /// @return 1 if an element was erased, 0 otherwise.
     HMM_CONSTEXPR_20 size_type erase_element(const key_type& key) {
         const auto it = find(key);
         if (it == end()) {
@@ -511,20 +732,39 @@ class raw_hash_set {
         return 1;
     }
 
-    // Internals
+    /// @brief Internal Hook: Retrieves a mutable reference to the internal size
+    /// counter.
+    HMM_NODISCARD constexpr size_type& size_ref() noexcept {
+        return members_.size_info_.size_;
+    }
+
+    /// @brief Internal Hook: Exposes the raw control bytes pointer.
+    HMM_NODISCARD ctrl_t* ctrl_ptr() const noexcept {
+        return members_.get_ctrl();
+    }
+
+    /// @brief Internal Hook: Exposes the raw data slots pointer.
+    HMM_NODISCARD slot_type* slots_ptr() const noexcept {
+        return static_cast<slot_type*>(members_.get_slots());
+    }
+
+    /// @brief Forces the container to dynamically allocate a larger block and
+    /// re-insert all items.
     HMM_CONSTEXPR_20 void rehash_and_grow() {
         size_type new_cap = (capacity() == 0) ? 16 : capacity() * 2;
         rehash_and_grow(new_cap);
     }
 
+    /// @brief Rehashes the table and grows it to an explicit new capacity.
+    /// @param new_cap The exact new capacity. Must be a power of two.
     HMM_CONSTEXPR_20 void rehash_and_grow(const size_type new_cap) {
-        auto old_ctrl = ctrl_;
-        auto old_slots = slots_;
+        auto old_ctrl = ctrl_ptr();
+        auto old_slots = slots_ptr();
         auto old_cap = capacity();
 
         allocate_storage(new_cap);
-        std::memset(ctrl_, detail::slots::kEmpty, new_cap + kGroupWidth);
-        size_ = 0;
+        std::memset(ctrl_ptr(), detail::slots::kEmpty, new_cap + kGroupWidth);
+        members_.size_info_.size_ = 0;
 
         if (old_slots) {
             using ReboundAlloc = typename std::allocator_traits<
@@ -535,7 +775,7 @@ class raw_hash_set {
                 if (old_ctrl[i] >= 0) {
                     auto& val = old_slots[i];
                     auto info = find_or_prepare_insert(policy_type::key(val));
-                    policy_type::construct(alloc, &slots_[info.index],
+                    policy_type::construct(alloc, &slots_ptr()[info.index],
                                            std::move(val));
                     finish_insert(info.index, info.full_hash);
                     policy_type::destroy(alloc, &old_slots[i]);
@@ -545,23 +785,29 @@ class raw_hash_set {
         }
     }
 
+    /// @brief Internal Hook: Given a guaranteed index and hash, constructs the
+    /// element into the slot array.
     void insert_at_index(size_t index, size_t full_hash, slot_type&& val) {
         using ReboundAlloc = typename std::allocator_traits<
             allocator_type>::template rebind_alloc<slot_type>;
         ReboundAlloc alloc(byte_alloc());
-        policy_type::construct(alloc, &slots_[index], std::move(val));
+        policy_type::construct(alloc, &slots_ptr()[index], std::move(val));
         finish_insert(index, full_hash);
     }
 
+    /// @brief Commits an insertion by updating the control byte metadata array.
     void finish_insert(size_t index, size_t full_hash) {
         auto h2 = detail::H2(full_hash);
-        ctrl_[index] = h2;
+        ctrl_ptr()[index] = h2;
         if (index < kGroupWidth) {
-            ctrl_[capacity() + index] = h2;
+            ctrl_ptr()[capacity() + index] = h2;
         }
-        ++size_;
+        ++members_.size_info_.size_;
     }
 
+    /// @brief Acquires memory via the allocator for a specified capacity.
+    /// @details Safely computes alignments and buffer sizes to house both
+    /// metadata bytes and strictly aligned elements in one allocation block.
     HMM_CONSTEXPR_20 void allocate_storage(const size_type cap) {
         size_t ctrl_size = cap + kGroupWidth;
         size_t slot_align = alignof(slot_type);
@@ -571,12 +817,14 @@ class raw_hash_set {
         unsigned char* ptr = std::allocator_traits<byte_allocator>::allocate(
             byte_alloc(), total_bytes);
 
-        ctrl_ = reinterpret_cast<Control*>(ptr);
-        slots_ = reinterpret_cast<slot_type*>(ptr + slot_offset);
-        capacity_ = cap;
+        members_.set_ctrl(reinterpret_cast<ctrl_t*>(ptr));
+        members_.set_slots(reinterpret_cast<slot_type*>(ptr + slot_offset));
+        members_.size_info_.capacity_ = cap;
     }
 
-    HMM_CONSTEXPR_20 void deallocate_storage(Control* ctrl_ptr,
+    /// @brief Releases the memory block currently owned by the set back to the
+    /// allocator.
+    HMM_CONSTEXPR_20 void deallocate_storage(ctrl_t* ctrl_pointer,
                                              const size_type cap) {
         size_t ctrl_size = cap + kGroupWidth;
         size_t slot_align = alignof(slot_type);
@@ -584,64 +832,72 @@ class raw_hash_set {
         size_t total_bytes = slot_offset + cap * sizeof(slot_type);
 
         std::allocator_traits<byte_allocator>::deallocate(
-            byte_alloc(), reinterpret_cast<unsigned char*>(ctrl_ptr),
+            byte_alloc(), reinterpret_cast<unsigned char*>(ctrl_pointer),
             total_bytes);
     }
 
+    /// @brief Invokes destructors on all actively tracked elements using the
+    /// allocator traits.
     HMM_CONSTEXPR_20 void clear_elements() {
         using ReboundAlloc = typename std::allocator_traits<
             allocator_type>::template rebind_alloc<slot_type>;
         ReboundAlloc alloc(byte_alloc());
-        for (std::size_t i = 0; i < capacity_; ++i) {
-            if (ctrl_[i] >= 0) {
-                policy_type::destroy(alloc, &slots_[i]);
+        for (std::size_t i = 0; i < capacity(); ++i) {
+            if (ctrl_ptr()[i] >= 0) {
+                policy_type::destroy(alloc, &slots_ptr()[i]);
             }
         }
     }
 
+    /// @brief Synthesizes `clear_elements` and `deallocate_storage`, fully
+    /// resetting the hash set to an empty, zero-capacity state.
     HMM_CONSTEXPR_20 void clear_and_deallocate() {
-        if (!ctrl_) {
+        if (!ctrl_ptr()) {
             return;
         }
         clear_elements();
-        deallocate_storage(ctrl_, capacity_);
-        ctrl_ = nullptr;
-        slots_ = nullptr;
-        capacity_ = 0;
-        size_ = 0;
+        deallocate_storage(ctrl_ptr(), capacity());
+        members_.set_ctrl(nullptr);
+        members_.set_slots(nullptr);
+        members_.size_info_.capacity_ = 0;
+        members_.size_info_.size_ = 0;
     }
 
+    /// @brief Computes if the container's load factor exceeds the threshold
+    /// triggering a resize (7/8).
     HMM_NODISCARD constexpr bool needs_resize() const noexcept {
         return capacity() == 0 || size() * 8 > capacity() * 7;
     }
 
+    /// @brief Internal Hook: Retrieves the hashing functor.
     HMM_NODISCARD HMM_CONSTEXPR_14 Hash& hasher() noexcept {
-        return members_.template get<0, Hash>();
+        return members_.get_hasher();
     }
+
+    /// @brief Internal Hook: Retrieves the equality functor.
     HMM_NODISCARD HMM_CONSTEXPR_14 Eq& equal() noexcept {
-        return members_.template get<1, Eq>();
+        return members_.get_eq();
     }
 
     HMM_NODISCARD HMM_CONSTEXPR_14 byte_allocator& byte_alloc() noexcept {
-        return members_.template get<2, byte_allocator>();
+        return members_.get_allocator();
     }
     HMM_NODISCARD HMM_CONSTEXPR_14 const byte_allocator& byte_alloc()
         const noexcept {
-        return members_.template get<2, byte_allocator>();
+        return members_.get_allocator();
     }
 
+    /// @brief Internal Hook: Retrieves the hashing functor (const context).
     HMM_NODISCARD constexpr const Hash& hasher() const noexcept {
-        return members_.template get<0, Hash>();
-    }
-    HMM_NODISCARD constexpr const Eq& equal() const noexcept {
-        return members_.template get<1, Eq>();
+        return members_.get_hasher();
     }
 
-    detail::CompressedTuple<Hash, Eq, byte_allocator> members_;
-    Control* ctrl_{nullptr};
-    slot_type* slots_{nullptr};
-    size_type capacity_{0};
-    size_type size_{0};
+    /// @brief Internal Hook: Retrieves the equality functor (const context).
+    HMM_NODISCARD constexpr const Eq& equal() const noexcept {
+        return members_.get_eq();
+    }
+
+    Members members_;
 };
 
 }  // namespace internal
