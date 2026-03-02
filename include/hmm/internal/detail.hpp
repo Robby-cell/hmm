@@ -125,6 +125,60 @@ T exchange(T& self, U&& other) {
     return old;
 }
 
+template <class T, class U>
+struct ForwardLike {
+    using type = U&&;
+};
+
+template <class T, class U>
+struct ForwardLike<T&&, U> {
+    using type = U&&;
+};
+
+template <class T, class U>
+struct ForwardLike<T&, U> {
+    using type = U&;
+};
+
+template <class T, class U>
+struct ForwardLike<const T&&, U> {
+    using type = const U&&;
+};
+
+template <class T, class U>
+struct ForwardLike<const T&, U> {
+    using type = const U&;
+};
+
+template <class Like, class Type>
+HMM_NODISCARD constexpr typename detail::ForwardLike<Like, Type>::type
+forward_like(Type&& value) noexcept {
+    return static_cast<typename detail::ForwardLike<Like, Type>::type>(value);
+}
+
+template <class... Ts>
+struct TypePack;
+
+template <size_t I, class T, class... Ts>
+struct TypeAtIndexImpl {
+    using type = typename TypeAtIndexImpl<I - 1, Ts...>::type;
+};
+
+template <class T, class... Ts>
+struct TypeAtIndexImpl<0, T, Ts...> {
+    using type = T;
+};
+
+template <size_t I, class TP>
+struct TypeAtIndex;
+
+template <size_t I, class... Ts>
+struct TypeAtIndex<I, TypePack<Ts...>> {
+    static_assert(I < sizeof...(Ts), "Index must be within the list of types");
+
+    using type = typename TypeAtIndexImpl<I, Ts...>::type;
+};
+
 }  // namespace detail
 }  // namespace internal
 }  // namespace hmm
