@@ -58,11 +58,6 @@ class BitMask {
    public:
     constexpr explicit BitMask(uint32_t mask) : mask_(mask) {}
 
-    // Iterator-like interface for "for (auto i : mask)" loops
-    constexpr BitMask begin() const {
-        return *this;
-    }
-
     uint32_t first_index() const {
         return CountTrailingZeros(mask_);
     }
