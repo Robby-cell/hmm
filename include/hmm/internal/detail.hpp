@@ -57,22 +57,6 @@ constexpr std::int8_t kEmpty = -128;
 constexpr std::int8_t kDeleted = -2;
 }  // namespace slots
 
-template <typename... Ts>
-struct CompressedTuple : private Ts... {
-    CompressedTuple() = default;
-    CompressedTuple(const Ts&... args) : Ts(args)... {}
-
-    template <std::size_t I, typename T>
-    HMM_NODISCARD T& get() {
-        return static_cast<T&>(*this);
-    }
-
-    template <std::size_t I, typename T>
-    HMM_NODISCARD const T& get() const {
-        return static_cast<const T&>(*this);
-    }
-};
-
 namespace construction {
 template <class...>
 using _AlwaysTrue = std::true_type;

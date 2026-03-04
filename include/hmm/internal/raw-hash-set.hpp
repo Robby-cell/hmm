@@ -111,8 +111,8 @@ struct SizeInfo {
 /// @tparam Eq The equality comparison functor type.
 /// @tparam Alloc The allocator type used for memory management.
 template <class Hash, class Eq, class Alloc>
-struct CommonMembers : detail::CompressedTuple<Hash, Eq, Alloc> {
-    using Base = detail::CompressedTuple<Hash, Eq, Alloc>;
+struct CommonMembers : CompressedTuple<Hash, Eq, Alloc> {
+    using Base = CompressedTuple<Hash, Eq, Alloc>;
 
     /// @brief Forwarding constructor for dependencies.
     template <
@@ -131,32 +131,32 @@ struct CommonMembers : detail::CompressedTuple<Hash, Eq, Alloc> {
 
     /// @brief Retrieves a mutable reference to the hashing functor.
     constexpr Hash& get_hasher() noexcept {
-        return Base::template get<0, Hash>();
+        return Base::template get<0>();
     }
 
     /// @brief Retrieves a const reference to the hashing functor.
     constexpr const Hash& get_hasher() const noexcept {
-        return Base::template get<0, Hash>();
+        return Base::template get<0>();
     }
 
     /// @brief Retrieves a mutable reference to the equality functor.
     constexpr Eq& get_eq() noexcept {
-        return Base::template get<1, Eq>();
+        return Base::template get<1>();
     }
 
     /// @brief Retrieves a const reference to the equality functor.
     constexpr const Eq& get_eq() const noexcept {
-        return Base::template get<1, Eq>();
+        return Base::template get<1>();
     }
 
     /// @brief Retrieves a mutable reference to the allocator.
     constexpr Alloc& get_allocator() noexcept {
-        return Base::template get<2, Alloc>();
+        return Base::template get<2>();
     }
 
     /// @brief Retrieves a const reference to the allocator.
     constexpr const Alloc& get_allocator() const noexcept {
-        return Base::template get<2, Alloc>();
+        return Base::template get<2>();
     }
 
     /// @brief Retrieves the control byte array pointer.

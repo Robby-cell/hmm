@@ -94,11 +94,13 @@ struct CompressedTupleImpl<std::index_sequence<Is...>, Ts...>
     template <size_t I, class Self>
     static constexpr auto GetImpl(Self&& self) noexcept
         -> decltype(detail::forward_like<Self>(
-            std::declval<typename detail::TypeAtIndex<
-                I, detail::TypePack<Ts...>>::type>())) {
-        return static_cast<Self&&>(self)
-            .TupleLeaf<I, typename detail::TypeAtIndex<
-                              I, detail::TypePack<Ts...>>::type>::get();
+            static_cast<Self&&>(self)
+                .TupleLeaf<I, typename detail::TypeAtIndex<
+                                  I, detail::TypePack<Ts...>>::type>::get())) {
+        return detail::forward_like<Self>(
+            static_cast<Self&&>(self)
+                .TupleLeaf<I, typename detail::TypeAtIndex<
+                                  I, detail::TypePack<Ts...>>::type>::get());
     }
 
     template <size_t I>
@@ -134,10 +136,7 @@ struct CompressedTuple
         : Base(std::make_index_sequence<sizeof...(args)>{},
                static_cast<Args&&>(args)...) {}
 
-    template <size_t I>
-    constexpr auto get() noexcept -> decltype(Base::template get<I>()) {
-        return Base::template get<I>();
-    }
+    using Base::get;
 };
 
 }  // namespace internal
