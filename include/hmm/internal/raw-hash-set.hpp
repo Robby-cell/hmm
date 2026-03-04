@@ -73,7 +73,7 @@ struct HeapPtrs {
     }
 
     /// @brief Sets the pointer to the array of control bytes.
-    constexpr void set_ctrl(ctrl_t* ctrl) noexcept {
+    HMM_CONSTEXPR_14 void set_ctrl(ctrl_t* ctrl) noexcept {
         ctrl_.set(ctrl);
     }
 
@@ -83,7 +83,7 @@ struct HeapPtrs {
     }
 
     /// @brief Sets the weakly-typed pointer to the array of value slots.
-    constexpr void set_slots(void* the_slots) noexcept {
+    HMM_CONSTEXPR_14 void set_slots(void* the_slots) noexcept {
         slots_.set(the_slots);
     }
 
