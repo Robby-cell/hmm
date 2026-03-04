@@ -52,7 +52,7 @@ union MaybeUninitialized {
 
     /// @brief Modifies the stored pointer.
     /// @param ptr The new pointer value to store.
-    constexpr void set(T* ptr) noexcept {
+    HMM_CONSTEXPR_14 void set(T* ptr) noexcept {
         ptr_ = ptr;
     }
 
@@ -130,7 +130,7 @@ struct CommonMembers : CompressedTuple<Hash, Eq, Alloc> {
     CommonMembers() = default;
 
     /// @brief Retrieves a mutable reference to the hashing functor.
-    constexpr Hash& get_hasher() noexcept {
+    HMM_CONSTEXPR_14 Hash& get_hasher() noexcept {
         return Base::template get<0>();
     }
 
@@ -140,7 +140,7 @@ struct CommonMembers : CompressedTuple<Hash, Eq, Alloc> {
     }
 
     /// @brief Retrieves a mutable reference to the equality functor.
-    constexpr Eq& get_eq() noexcept {
+    HMM_CONSTEXPR_14 Eq& get_eq() noexcept {
         return Base::template get<1>();
     }
 
@@ -150,7 +150,7 @@ struct CommonMembers : CompressedTuple<Hash, Eq, Alloc> {
     }
 
     /// @brief Retrieves a mutable reference to the allocator.
-    constexpr Alloc& get_allocator() noexcept {
+    HMM_CONSTEXPR_14 Alloc& get_allocator() noexcept {
         return Base::template get<2>();
     }
 
@@ -165,7 +165,7 @@ struct CommonMembers : CompressedTuple<Hash, Eq, Alloc> {
     }
 
     /// @brief Updates the control byte array pointer.
-    constexpr void set_ctrl(ctrl_t* ctrl) noexcept {
+    HMM_CONSTEXPR_14 void set_ctrl(ctrl_t* ctrl) noexcept {
         ptrs_.set_ctrl(ctrl);
     }
 
@@ -175,7 +175,7 @@ struct CommonMembers : CompressedTuple<Hash, Eq, Alloc> {
     }
 
     /// @brief Updates the slot array pointer.
-    constexpr void set_slots(void* the_slots) noexcept {
+    HMM_CONSTEXPR_14 void set_slots(void* the_slots) noexcept {
         ptrs_.set_slots(the_slots);
     }
 
