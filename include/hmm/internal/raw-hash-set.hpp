@@ -386,10 +386,10 @@ class raw_hash_set {
     /// @brief Copy-constructs the hash set, duplicating elements into a new
     /// allocation.
     raw_hash_set(const raw_hash_set& other)
-        : members_(
-              other.hasher(), other.equal(),
-              std::allocator_traits<byte_allocator>::
-                  select_on_container_copy_construction(other.byte_alloc())) {
+        : members_(other.hasher(), other.equal(),
+                   std::allocator_traits<byte_allocator>::
+                       select_on_container_copy_construction(
+                           other.get_allocator())) {
         reserve(other.size());
         for (const auto& elem : other) {
             insert(elem);
@@ -696,13 +696,8 @@ class raw_hash_set {
             info = find_or_prepare_insert(key);
         }
 
-        // CONSTRUCT
-        using ReboundAlloc = typename std::allocator_traits<
-            allocator_type>::template rebind_alloc<slot_type>;
-        ReboundAlloc alloc(byte_alloc());
-
         policy_type::construct(
-            alloc, &slots_ptr()[info.index], std::piecewise_construct,
+            get_allocator(), &slots_ptr()[info.index], std::piecewise_construct,
             std::forward_as_tuple(std::forward<K>(key)),
             std::forward_as_tuple(std::forward<Args>(args)...));
 
@@ -719,10 +714,7 @@ class raw_hash_set {
     HMM_CONSTEXPR_20 iterator erase(const_iterator cit) {
         std::size_t index = cit.slot_ - slots_ptr();
 
-        using ReboundAlloc = typename std::allocator_traits<
-            allocator_type>::template rebind_alloc<slot_type>;
-        ReboundAlloc alloc(byte_alloc());
-        policy_type::destroy(alloc, &slots_ptr()[index]);
+        policy_type::destroy(get_allocator(), &slots_ptr()[index]);
 
         ctrl_ptr()[index] = detail::slots::kDeleted;
         if (index < kGroupWidth) {
@@ -782,18 +774,15 @@ class raw_hash_set {
         members_.size_info_.size_ = 0;
 
         if (old_slots) {
-            using ReboundAlloc = typename std::allocator_traits<
-                allocator_type>::template rebind_alloc<slot_type>;
-            ReboundAlloc alloc(byte_alloc());
-
             for (size_t i = 0; i < old_cap; ++i) {
                 if (old_ctrl[i] >= 0) {
                     auto& val = old_slots[i];
                     auto info = find_or_prepare_insert(policy_type::key(val));
-                    policy_type::construct(alloc, &slots_ptr()[info.index],
+                    policy_type::construct(get_allocator(),
+                                           &slots_ptr()[info.index],
                                            std::move(val));
                     finish_insert(info.index, info.full_hash);
-                    policy_type::destroy(alloc, &old_slots[i]);
+                    policy_type::destroy(get_allocator(), &old_slots[i]);
                 }
             }
             deallocate_storage(old_ctrl, old_cap);
@@ -803,10 +792,8 @@ class raw_hash_set {
     /// @brief Internal Hook: Given a guaranteed index and hash, constructs the
     /// element into the slot array.
     void insert_at_index(size_t index, size_t full_hash, slot_type&& val) {
-        using ReboundAlloc = typename std::allocator_traits<
-            allocator_type>::template rebind_alloc<slot_type>;
-        ReboundAlloc alloc(byte_alloc());
-        policy_type::construct(alloc, &slots_ptr()[index], std::move(val));
+        policy_type::construct(get_allocator(), &slots_ptr()[index],
+                               std::move(val));
         finish_insert(index, full_hash);
     }
 
@@ -830,7 +817,7 @@ class raw_hash_set {
         size_t total_bytes = slot_offset + cap * sizeof(slot_type);
 
         unsigned char* ptr = std::allocator_traits<byte_allocator>::allocate(
-            byte_alloc(), total_bytes);
+            get_allocator(), total_bytes);
 
         members_.set_ctrl(reinterpret_cast<ctrl_t*>(ptr));
         members_.set_slots(reinterpret_cast<slot_type*>(ptr + slot_offset));
@@ -847,19 +834,16 @@ class raw_hash_set {
         size_t total_bytes = slot_offset + cap * sizeof(slot_type);
 
         std::allocator_traits<byte_allocator>::deallocate(
-            byte_alloc(), reinterpret_cast<unsigned char*>(ctrl_pointer),
+            get_allocator(), reinterpret_cast<unsigned char*>(ctrl_pointer),
             total_bytes);
     }
 
     /// @brief Invokes destructors on all actively tracked elements using the
     /// allocator traits.
     HMM_CONSTEXPR_20 void clear_elements() {
-        using ReboundAlloc = typename std::allocator_traits<
-            allocator_type>::template rebind_alloc<slot_type>;
-        ReboundAlloc alloc(byte_alloc());
         for (std::size_t i = 0; i < capacity(); ++i) {
             if (ctrl_ptr()[i] >= 0) {
-                policy_type::destroy(alloc, &slots_ptr()[i]);
+                policy_type::destroy(get_allocator(), &slots_ptr()[i]);
             }
         }
     }
@@ -894,10 +878,10 @@ class raw_hash_set {
         return members_.get_eq();
     }
 
-    HMM_NODISCARD HMM_CONSTEXPR_14 byte_allocator& byte_alloc() noexcept {
+    HMM_NODISCARD HMM_CONSTEXPR_14 byte_allocator& get_allocator() noexcept {
         return members_.get_allocator();
     }
-    HMM_NODISCARD HMM_CONSTEXPR_14 const byte_allocator& byte_alloc()
+    HMM_NODISCARD HMM_CONSTEXPR_14 const byte_allocator& get_allocator()
         const noexcept {
         return members_.get_allocator();
     }
