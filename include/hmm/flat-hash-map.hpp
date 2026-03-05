@@ -195,7 +195,7 @@ class flat_hash_map : protected internal::raw_hash_map<MapPolicy<Key, Value>,
     /// @return A reference to the associated mapped value.
     HMM_NODISCARD HMM_CONSTEXPR_20 mapped_type& operator[](
         const key_type& key) {
-        return try_emplace(key).first->second;
+        return Base::operator[](key);
     }
 
     /// @brief Accesses the mapped value using a movable key, inserting a
@@ -204,7 +204,7 @@ class flat_hash_map : protected internal::raw_hash_map<MapPolicy<Key, Value>,
     /// @param key The key to access and potentially move from.
     /// @return A reference to the associated mapped value.
     HMM_NODISCARD HMM_CONSTEXPR_20 mapped_type& operator[](key_type&& key) {
-        return try_emplace(std::move(key)).first->second;
+        return Base::operator[](std::move(key));
     }
 
     HMM_NODISCARD HMM_CONSTEXPR_20 mapped_type& at(const key_type& key) {
