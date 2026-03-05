@@ -19,8 +19,8 @@
 
 #include <initializer_list>
 #include <stdexcept>
+#include <utility>
 
-#include "hmm/internal/detail.hpp"
 #include "hmm/internal/macros.hpp"
 #include "hmm/internal/raw-hash-set.hpp"
 
@@ -113,6 +113,7 @@ class raw_hash_map : protected raw_hash_set<Policy, Hash, Eq, Alloc> {
     using Base::insert;
     using Base::reserve;
     using Base::size;
+    using Base::try_emplace;
 
     /// @brief Erases the element at the specified iterator position.
     /// @param pos The const_iterator pointing to the element to remove.
@@ -143,24 +144,11 @@ class raw_hash_map : protected raw_hash_set<Policy, Hash, Eq, Alloc> {
     /// key.
     HMM_NODISCARD HMM_CONSTEXPR_20 mapped_type& operator[](
         const key_type& key) {
-        if (Base::needs_resize()) {
-            Base::rehash_and_grow();
-        }
-        auto info = Base::find_or_prepare_insert(key);
-        if (info.found) {
-            return policy_type::value(Base::slots_ptr()[info.index]);
-        }
+        return this->try_emplace(key).first->second;
+    }
 
-        const auto full_hash = info.full_hash;
-        const auto h2 = detail::H2(full_hash);
-        Base::ctrl_ptr()[info.index] = h2;
-
-        policy_type::construct(Base::slot_alloc(),
-                               &Base::slots_ptr()[info.index],
-                               std::piecewise_construct,
-                               std::forward_as_tuple(key), std::tuple<>());
-        ++Base::size_ref();
-        return policy_type::value(Base::slots_ptr()[info.index]);
+    HMM_NODISCARD HMM_CONSTEXPR_20 mapped_type& operator[](key_type&& key) {
+        return this->try_emplace(std::move(key)).first->second;
     }
 
     /// @brief Accesses the mapped value associated with the given key, with
