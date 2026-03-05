@@ -36,6 +36,7 @@ template <size_t... Ints>
 struct index_sequence {
     using type = index_sequence;
     using value_type = size_t;
+
     static constexpr size_t size() noexcept {
         return sizeof...(Ints);
     }
@@ -59,29 +60,47 @@ using index_sequence_for = make_index_sequence<sizeof...(Ts)>;
 
 template <size_t Index, class T, class = void>
 struct TupleLeaf {
+   public:
     HMM_CONSTEXPR_14 T& get() & noexcept {
-        return value;
+        return value_;
     }
 
     constexpr const T& get() const& noexcept {
-        return value;
+        return value_;
     }
 
     HMM_CONSTEXPR_14 T&& get() && noexcept {
-        return static_cast<T&&>(value);
+        return static_cast<T&&>(value_);
     }
 
     constexpr const T&& get() const&& noexcept {
-        return static_cast<const T&&>(value);
+        return static_cast<const T&&>(value_);
     }
 
-    T value;
+    HMM_CONSTEXPR_14 operator T&() & noexcept {
+        return get();
+    }
+
+    constexpr operator const T&() const& noexcept {
+        return get();
+    }
+
+    HMM_CONSTEXPR_14 operator T&&() && noexcept {
+        return std::move(*this).get();
+    }
+
+    constexpr operator const T&&() const&& noexcept {
+        return std::move(*this).get();
+    }
+
+    T value_;
 };
 
 template <size_t Index, class T>
 struct TupleLeaf<Index, T,
                  typename std::enable_if<std::is_empty<T>::value, int>::type>
     : T {
+   public:
     template <class Ty,
               typename std::enable_if<
                   !std::is_same<TupleLeaf, typename std::remove_cv<
@@ -107,6 +126,22 @@ struct TupleLeaf<Index, T,
     constexpr const T&& get() const&& noexcept {
         return static_cast<const T&&>(*this);
     }
+
+    HMM_CONSTEXPR_14 operator T&() & noexcept {
+        return get();
+    }
+
+    constexpr operator const T&() const& noexcept {
+        return get();
+    }
+
+    HMM_CONSTEXPR_14 operator T&&() && noexcept {
+        return std::move(*this).get();
+    }
+
+    constexpr operator const T&&() const&& noexcept {
+        return std::move(*this).get();
+    }
 };
 
 template <class, class... Ts>
@@ -115,6 +150,7 @@ struct CompressedTupleImpl;
 template <size_t... Is, class... Ts>
 struct CompressedTupleImpl<index_sequence<Is...>, Ts...>
     : TupleLeaf<Is, Ts>... {
+   public:
     template <size_t... Idxs, class... Args>
     HMM_CONSTEXPR_20 inline CompressedTupleImpl(index_sequence<Idxs...>,
                                                 Args&&... args)
@@ -122,6 +158,7 @@ struct CompressedTupleImpl<index_sequence<Is...>, Ts...>
                               Idxs, detail::TypePack<Ts...>>::type>{
               static_cast<Args&&>(args)}... {}
 
+   private:
     template <size_t I, class Self>
     static HMM_CONSTEXPR_14 auto GetImpl(Self&& self) noexcept
         -> decltype(detail::forward_like<Self>(
@@ -134,6 +171,7 @@ struct CompressedTupleImpl<index_sequence<Is...>, Ts...>
                                   I, detail::TypePack<Ts...>>::type>::get());
     }
 
+   public:
     template <size_t I>
     HMM_CONSTEXPR_14 auto get() & noexcept -> decltype(GetImpl<I>(*this)) {
         return GetImpl<I>(*this);
@@ -159,8 +197,10 @@ struct CompressedTupleImpl<index_sequence<Is...>, Ts...>
 
 template <class... Ts>
 struct CompressedTuple : CompressedTupleImpl<index_sequence_for<Ts...>, Ts...> {
+   private:
     using Base = CompressedTupleImpl<index_sequence_for<Ts...>, Ts...>;
 
+   public:
     template <class... Args>
     HMM_CONSTEXPR_20 inline CompressedTuple(Args&&... args)
         : Base(index_sequence_for<Args...>{}, static_cast<Args&&>(args)...) {}
