@@ -29,6 +29,7 @@ namespace internal {
 // C++11 Polyfill for std::index_sequence
 #if HMM_HAS_CXX_14
 using std::index_sequence;
+using std::index_sequence_for;
 using std::make_index_sequence;
 #else
 template <size_t... Ints>
@@ -51,6 +52,9 @@ struct make_index_sequence_impl<0, Next...> {
 
 template <size_t N>
 using make_index_sequence = typename make_index_sequence_impl<N>::type;
+
+template <class... Ts>
+using index_sequence_for = make_index_sequence<sizeof...(Ts)>;
 #endif
 
 template <size_t Index, class T, class = void>
@@ -154,14 +158,12 @@ struct CompressedTupleImpl<index_sequence<Is...>, Ts...>
 };
 
 template <class... Ts>
-struct CompressedTuple
-    : CompressedTupleImpl<make_index_sequence<sizeof...(Ts)>, Ts...> {
-    using Base = CompressedTupleImpl<make_index_sequence<sizeof...(Ts)>, Ts...>;
+struct CompressedTuple : CompressedTupleImpl<index_sequence_for<Ts...>, Ts...> {
+    using Base = CompressedTupleImpl<index_sequence_for<Ts...>, Ts...>;
 
     template <class... Args>
     HMM_CONSTEXPR_20 inline CompressedTuple(Args&&... args)
-        : Base(make_index_sequence<sizeof...(args)>{},
-               static_cast<Args&&>(args)...) {}
+        : Base(index_sequence_for<Args...>{}, static_cast<Args&&>(args)...) {}
 
     using Base::get;
 };
