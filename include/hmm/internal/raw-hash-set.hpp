@@ -672,17 +672,31 @@ class raw_hash_set {
     template <class K, class... Args>
     HMM_CONSTEXPR_20 std::pair<iterator, bool> try_emplace(K&& key,
                                                            Args&&... args) {
-        if (needs_resize()) {
-            rehash_and_grow();
-        }
-
+        // LOOKUP FIRST. Do not resize yet.
+        // We pass the key assuming find_or_prepare_insert takes `const K&`
+        // and does not consume the r-value reference.
         auto info = find_or_prepare_insert(key);
+
+        // CASE: FOUND
+        // Return existing element. No resize needed, even if map is "full".
         if (info.found) {
             return {iterator(ctrl_ptr() + info.index, slots_ptr() + info.index,
                              ctrl_ptr() + capacity()),
                     false};
         }
 
+        // CASE: NOT FOUND (INSERTION REQUIRED)
+        // Now we check if we have space.
+        if (needs_resize()) {
+            rehash_and_grow();
+
+            // The table just changed size/location. The 'info' index is now
+            // invalid. We must re-calculate the hash (if needed) and find the
+            // new slot.
+            info = find_or_prepare_insert(key);
+        }
+
+        // CONSTRUCT
         using ReboundAlloc = typename std::allocator_traits<
             allocator_type>::template rebind_alloc<slot_type>;
         ReboundAlloc alloc(byte_alloc());
@@ -693,6 +707,7 @@ class raw_hash_set {
             std::forward_as_tuple(std::forward<Args>(args)...));
 
         finish_insert(info.index, info.full_hash);
+
         return {iterator(ctrl_ptr() + info.index, slots_ptr() + info.index,
                          ctrl_ptr() + capacity()),
                 true};
