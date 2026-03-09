@@ -14,11 +14,11 @@ option(HMM_HASH_IMPL_INLINE "Provide the hash function inline, rather than compi
 # header-only library, used to attach properties to.
 if (HMM_HASH_IMPL_INLINE)
     add_library(hmm INTERFACE)
+    target_compile_definitions(hmm PUBLIC HMM_HASH_IMPL_COMPILED=1)
 else ()
     set(hmm_SOURCES src/city-hash.cc)
     add_library(hmm STATIC)
     target_sources(hmm PRIVATE ${hmm_SOURCES})
-    target_compile_definitions(hmm PUBLIC HMM_HASH_IMPL_INLINE=1)
 endif ()
 
 # (Best Practice) Create a namespaced alias. Consumers should link to hmm::hmm.
