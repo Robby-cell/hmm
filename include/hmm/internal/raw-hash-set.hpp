@@ -18,6 +18,7 @@
 #define HMM_HMM_INTERNAL_RAW_HASH_SET_HPP
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <initializer_list>
@@ -215,6 +216,7 @@ class raw_hash_set {
     using key_type = typename policy_type::key_type;
     using value_type = typename policy_type::value_type;
     using size_type = std::size_t;
+    using difference_type = std::ptrdiff_t;
     using slot_type = typename policy_type::slot_type;
 
     // Use a byte allocator for the unified memory block

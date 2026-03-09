@@ -58,6 +58,7 @@ class raw_hash_map : protected raw_hash_set<Policy, Hash, Eq, Alloc> {
     /// map-like containers).
     using mapped_type = typename Policy::mapped_type;
     using size_type = typename Base::size_type;
+    using difference_type = typename Base::difference_type;
 
     using slot_type = typename Base::slot_type;
     using slot_allocator = typename Base::slot_allocator;

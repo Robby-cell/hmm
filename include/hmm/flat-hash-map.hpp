@@ -70,6 +70,7 @@ class flat_hash_map : protected internal::raw_hash_map<MapPolicy<Key, Value>,
     using value_type = typename Base::value_type;
     using mapped_type = typename Base::mapped_type;
     using size_type = typename Base::size_type;
+    using difference_type = typename Base::difference_type;
 
     using slot_type = typename Base::slot_type;
     using slot_allocator = typename Base::slot_allocator;

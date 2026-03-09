@@ -50,6 +50,7 @@ class flat_hash_set
     using key_type = typename Base::key_type;
     using value_type = typename Base::value_type;
     using size_type = typename Base::size_type;
+    using difference_type = typename Base::difference_type;
 
     using slot_type = typename Base::slot_type;
     using slot_allocator = typename Base::slot_allocator;
