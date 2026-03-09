@@ -20,7 +20,7 @@
 #include <cstdint>
 #include <utility>
 
-#ifdef HMM_HASH_IMPL_INLINE
+#ifndef HMM_HASH_IMPL_COMPILE
 #define HMM_HASH_QUALIFIER inline
 #else
 #define HMM_HASH_QUALIFIER
