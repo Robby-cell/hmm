@@ -741,6 +741,19 @@ class raw_hash_set {
         return 1;
     }
 
+    /// @brief Erases the element matching the provided key. Uses template.
+    /// Providing a transparent interface.
+    /// @return 1 if an element was erased, 0 otherwise.
+    template <class Key>
+    HMM_CONSTEXPR_20 size_type erase_element(const Key& key) {
+        const auto it = find(key);
+        if (it == end()) {
+            return 0;
+        }
+        erase(it);
+        return 1;
+    }
+
     /// @brief Internal Hook: Retrieves a mutable reference to the internal size
     /// counter.
     HMM_NODISCARD constexpr size_type& size_ref() noexcept {
