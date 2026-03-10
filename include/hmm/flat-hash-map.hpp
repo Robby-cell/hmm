@@ -122,6 +122,7 @@ class flat_hash_map : protected internal::raw_hash_map<MapPolicy<Key, Value>,
     using Base::empty;
     using Base::end;
     using Base::erase;
+    using Base::erase_element;
     using Base::insert;
     using Base::reserve;
     using Base::size;

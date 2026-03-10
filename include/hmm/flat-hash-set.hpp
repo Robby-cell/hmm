@@ -85,6 +85,7 @@ class flat_hash_set
     using Base::empty;
     using Base::end;
     using Base::erase;
+    using Base::erase_element;
     using Base::reserve;
     using Base::size;
 

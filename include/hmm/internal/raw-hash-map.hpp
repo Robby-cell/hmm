@@ -110,6 +110,7 @@ class raw_hash_map : protected raw_hash_set<Policy, Hash, Eq, Alloc> {
     using Base::contains;
     using Base::emplace;
     using Base::end;
+    using Base::erase_element;
     using Base::find;
     using Base::insert;
     using Base::reserve;
