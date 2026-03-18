@@ -142,7 +142,7 @@ struct HeapPtrs {
 
     /// @brief Gets the weakly-typed pointer to the array of value slots.
     HMM_NODISCARD constexpr void* get_slots() const noexcept {
-        return get_slots();
+        return slots_.get();
     }
 
     /// @brief Sets the weakly-typed pointer to the array of value slots.
