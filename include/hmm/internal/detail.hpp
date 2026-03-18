@@ -39,16 +39,16 @@ using remove_cvref_t =
 template <class Ty>
 struct remove_cvref : type_identity<remove_cvref_t<Ty>> {};
 
-constexpr std::size_t H1(const std::size_t hash) {
+constexpr size_t H1(const size_t hash) {
     return hash;
 }
 
-constexpr std::int8_t H2(const std::size_t hash) {
-    return hash >> (sizeof(std::size_t) * 8 - 7);
+constexpr std::int8_t H2(const size_t hash) {
+    return hash >> (sizeof(size_t) * 8 - 7);
 }
 
-HMM_CONSTEXPR_14 inline std::size_t IndexWithoutProbing(
-    const std::size_t h1, const std::size_t capacity) noexcept {
+HMM_CONSTEXPR_14 inline size_t IndexWithoutProbing(
+    const size_t h1, const size_t capacity) noexcept {
     return h1 & (capacity - 1);
 }
 
@@ -161,6 +161,30 @@ struct TypeAtIndex<I, TypePack<Ts...>> {
     static_assert(I < sizeof...(Ts), "Index must be within the list of types");
 
     using type = typename TypeAtIndexImpl<I, Ts...>::type;
+};
+
+/// @brief Helper trait to extract the I-th type from a parameter pack,
+/// falling back to a Default type if the pack is too short.
+template <size_t Index, class Default, class... Args>
+struct TypeAtIndexOrDefault;
+
+// Base case: We reached index 0 and a type is available.
+template <class Default, class First, class... Rest>
+struct TypeAtIndexOrDefault<0, Default, First, Rest...> {
+    using type = First;
+};
+
+// Recursive case: Decrement index and discard the first type.
+template <size_t Index, class Default, class First, class... Rest>
+struct TypeAtIndexOrDefault<Index, Default, First, Rest...> {
+    using type =
+        typename TypeAtIndexOrDefault<Index - 1, Default, Rest...>::type;
+};
+
+// Fallback case: The pack is empty, use the Default type.
+template <size_t Index, class Default>
+struct TypeAtIndexOrDefault<Index, Default> {
+    using type = Default;
 };
 
 }  // namespace detail

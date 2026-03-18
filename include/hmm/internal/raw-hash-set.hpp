@@ -57,6 +57,68 @@ union MaybeUninitialized {
         ptr_ = ptr;
     }
 
+    HMM_CONSTEXPR_14 MaybeUninitialized& operator+=(ptrdiff_t diff) noexcept {
+        ptr_ += diff;
+        return *this;
+    }
+
+    HMM_CONSTEXPR_14 MaybeUninitialized
+    operator+(ptrdiff_t diff) const noexcept {
+        auto tmp = *this;
+        tmp += diff;
+        return tmp;
+    }
+
+    HMM_CONSTEXPR_14 MaybeUninitialized& operator-=(ptrdiff_t diff) noexcept {
+        ptr_ -= diff;
+        return *this;
+    }
+
+    HMM_CONSTEXPR_14 MaybeUninitialized
+    operator-(ptrdiff_t diff) const noexcept {
+        auto tmp = *this;
+        tmp -= diff;
+        return tmp;
+    }
+
+    HMM_CONSTEXPR_14 MaybeUninitialized& operator++() noexcept {
+        ++ptr_;
+        return *this;
+    }
+
+    HMM_CONSTEXPR_14 MaybeUninitialized& operator--() noexcept {
+        --ptr_;
+        return *this;
+    }
+
+    HMM_CONSTEXPR_14 MaybeUninitialized operator++(int) noexcept {
+        auto tmp = *this;
+        ++*this;
+        return tmp;
+    }
+
+    HMM_CONSTEXPR_14 MaybeUninitialized operator--(int) noexcept {
+        auto tmp = *this;
+        --*this;
+        return tmp;
+    }
+
+    constexpr bool operator==(const T* that) const noexcept {
+        return ptr_ == that;
+    }
+
+    constexpr bool operator!=(const T* that) const noexcept {
+        return !(*this == that);
+    }
+
+    constexpr bool operator==(MaybeUninitialized that) const noexcept {
+        return ptr_ == that.ptr_;
+    }
+
+    constexpr bool operator!=(MaybeUninitialized that) const noexcept {
+        return !(*this == that);
+    }
+
     T* ptr_;
 };
 
@@ -80,7 +142,7 @@ struct HeapPtrs {
 
     /// @brief Gets the weakly-typed pointer to the array of value slots.
     HMM_NODISCARD constexpr void* get_slots() const noexcept {
-        return slots_.get();
+        return get_slots();
     }
 
     /// @brief Sets the weakly-typed pointer to the array of value slots.
@@ -203,33 +265,41 @@ struct HasIsTransparent<T,
 /// control group array and the tightly packed data slots array.
 ///
 /// @tparam Policy Determines how keys and values are extracted (differentiates
-/// set vs map).
-/// @tparam Hash The hashing algorithm.
-/// @tparam Eq The equality operator.
-/// @tparam Alloc The allocator for allocating slots.
-template <class Policy, class Hash, class Eq, class Alloc>
+/// set vs map) and provides default types.
+/// @tparam TArgs Variadic pack defining [Hash, Eq, Allocator]. Falls back to
+/// Policy defaults.
+template <class Policy, class... TArgs>
 class raw_hash_set {
    public:
     using policy_type = Policy;
-    using hasher_type = Hash;
-    using key_equal = Eq;
+
+    using hasher_type = typename detail::TypeAtIndexOrDefault<
+        0, typename policy_type::default_hasher_type, TArgs...>::type;
+    using key_equal = typename detail::TypeAtIndexOrDefault<
+        1, typename policy_type::default_eq_type, TArgs...>::type;
+
     using key_type = typename policy_type::key_type;
     using value_type = typename policy_type::value_type;
-    using size_type = std::size_t;
+    using size_type = size_t;
     using difference_type = std::ptrdiff_t;
     using slot_type = typename policy_type::slot_type;
 
+   private:
+    using provided_allocator_type = typename detail::TypeAtIndexOrDefault<
+        2, typename policy_type::default_allocator_type, TArgs...>::type;
+
+   public:
     // Use a byte allocator for the unified memory block
     using byte_allocator = typename std::allocator_traits<
-        Alloc>::template rebind_alloc<unsigned char>;
-    using allocator_type =
-        typename std::allocator_traits<Alloc>::template rebind_alloc<slot_type>;
+        provided_allocator_type>::template rebind_alloc<unsigned char>;
+    using allocator_type = typename std::allocator_traits<
+        provided_allocator_type>::template rebind_alloc<slot_type>;
     using slot_allocator = allocator_type;
     using slot_traits = std::allocator_traits<slot_allocator>;
     using pointer = typename slot_traits::pointer;
 
    private:
-    using Members = CommonMembers<Hash, Eq, byte_allocator>;
+    using Members = CommonMembers<hasher_type, key_equal, byte_allocator>;
 
     static constexpr size_t kGroupWidth = Group::kWidth;
 
@@ -263,11 +333,11 @@ class raw_hash_set {
                                                      void>::type>
         constexpr BasicIterator(const BasicIterator<OtherTraits>& other)
             : ctrl_(other.ctrl_),
-              slot_(other.slot_),
+              slots_(other.slots_),
               end_ctrl_(other.end_ctrl_) {}
 
         HMM_NODISCARD constexpr reference operator*() const {
-            return policy_type::value_from_slot(*slot_);
+            return policy_type::value_from_slot(*get_slots());
         }
 
         HMM_NODISCARD constexpr pointer operator->() const {
@@ -277,8 +347,8 @@ class raw_hash_set {
         HMM_CONSTEXPR_14 BasicIterator& operator++() {
             do {
                 ++ctrl_;
-                ++slot_;
-            } while (ctrl_ != end_ctrl_ && *ctrl_ < 0);
+                ++slots_;
+            } while (get_ctrl() != get_end_ctrl() && *get_ctrl() < 0);
             return *this;
         }
 
@@ -290,7 +360,7 @@ class raw_hash_set {
 
         HMM_NODISCARD constexpr bool operator==(
             const BasicIterator& b) const noexcept {
-            return slot_ == b.slot_;
+            return slots_ == b.slots_;
         }
         HMM_NODISCARD constexpr bool operator!=(
             const BasicIterator& b) const noexcept {
@@ -299,18 +369,30 @@ class raw_hash_set {
 
        private:
         constexpr BasicIterator(ctrl_t* ctrl, slot_type* slot, ctrl_t* end_ctrl)
-            : ctrl_(ctrl), slot_(slot), end_ctrl_(end_ctrl) {}
+            : ctrl_{ctrl}, slots_{slot}, end_ctrl_{end_ctrl} {}
 
         HMM_CONSTEXPR_14 void skip_empty_or_deleted() {
-            while (ctrl_ != end_ctrl_ && *ctrl_ < 0) {
+            while (get_ctrl() != get_end_ctrl() && *get_ctrl() < 0) {
                 ++ctrl_;
-                ++slot_;
+                ++slots_;
             }
         }
 
-        ctrl_t* ctrl_{nullptr};
-        slot_type* slot_{nullptr};
-        ctrl_t* end_ctrl_{nullptr};
+        constexpr ctrl_t* get_ctrl() const noexcept {
+            return ctrl_.get();
+        }
+
+        constexpr slot_type* get_slots() const noexcept {
+            return slots_.get();
+        }
+
+        constexpr ctrl_t* get_end_ctrl() const noexcept {
+            return end_ctrl_.get();
+        }
+
+        MaybeUninitialized<ctrl_t> ctrl_;
+        MaybeUninitialized<slot_type> slots_;
+        MaybeUninitialized<ctrl_t> end_ctrl_;
     };
 
     struct NormalIteratorTraits {
@@ -327,9 +409,9 @@ class raw_hash_set {
     /// @brief Returned by internal insertion preparations, containing index
     /// routing data.
     struct HMM_NODISCARD FindInfo {
-        std::size_t index;  ///< The mapped slot index where the element exists
-                            ///< or should be inserted.
-        std::size_t full_hash;  ///< The pre-computed full 64-bit hash.
+        size_t index;      ///< The mapped slot index where the element exists
+                           ///< or should be inserted.
+        size_t full_hash;  ///< The pre-computed full 64-bit hash.
         bool found;  ///< True if the key already exists at the target index.
     };
 
@@ -338,7 +420,7 @@ class raw_hash_set {
 
     /// @brief Constructs an empty hash set using a specific allocator.
     HMM_CONSTEXPR_20 explicit raw_hash_set(const allocator_type& alloc)
-        : members_(Hash{}, Eq{}, byte_allocator(alloc)) {}
+        : members_(hasher_type{}, key_equal{}, byte_allocator(alloc)) {}
 
     /// @brief Constructs a hash set from an iterator range.
     template <class Iter, class Sentinel>
@@ -499,11 +581,6 @@ class raw_hash_set {
         }
     }
 
-    /// @brief Inserts elements from an initializer list.
-    void insert(std::initializer_list<value_type> ilist) {
-        insert(ilist.begin(), ilist.end());
-    }
-
     /// @brief Proactively resizes the container to accommodate at least `count`
     /// elements without rehashing.
     void reserve(size_type count) {
@@ -600,7 +677,7 @@ class raw_hash_set {
     /// @details Only enabled via SFINAE if both the Hash and Eq types define
     /// `is_transparent`.
     template <
-        typename K, typename H = Hash, typename E = Eq,
+        typename K, typename H = hasher_type, typename E = key_equal,
         typename = typename std::enable_if<HasIsTransparent<H>::value &&
                                            HasIsTransparent<E>::value>::type>
     HMM_NODISCARD HMM_CONSTEXPR_20 bool contains(const K& key) const noexcept {
@@ -714,7 +791,7 @@ class raw_hash_set {
     /// @return An iterator to the element immediately following the removed
     /// element.
     HMM_CONSTEXPR_20 iterator erase(const_iterator cit) {
-        std::size_t index = cit.slot_ - slots_ptr();
+        size_t index = cit.get_slots() - slots_ptr();
 
         policy_type::destroy(get_allocator(), &slots_ptr()[index]);
 
@@ -724,8 +801,9 @@ class raw_hash_set {
         }
 
         --members_.size_info_.size_;
-        auto it = iterator(cit.ctrl_, const_cast<slot_type*>(cit.slot_),
-                           cit.end_ctrl_);
+        auto it =
+            iterator(cit.get_ctrl(), const_cast<slot_type*>(cit.get_slots()),
+                     cit.get_end_ctrl());
         it.skip_empty_or_deleted();
         return it;
     }
@@ -856,7 +934,7 @@ class raw_hash_set {
     /// @brief Invokes destructors on all actively tracked elements using the
     /// allocator traits.
     HMM_CONSTEXPR_20 void clear_elements() {
-        for (std::size_t i = 0; i < capacity(); ++i) {
+        for (size_t i = 0; i < capacity(); ++i) {
             if (ctrl_ptr()[i] >= 0) {
                 policy_type::destroy(get_allocator(), &slots_ptr()[i]);
             }
@@ -884,12 +962,12 @@ class raw_hash_set {
     }
 
     /// @brief Internal Hook: Retrieves the hashing functor.
-    HMM_NODISCARD HMM_CONSTEXPR_14 Hash& hasher() noexcept {
+    HMM_NODISCARD HMM_CONSTEXPR_14 hasher_type& hasher() noexcept {
         return members_.get_hasher();
     }
 
     /// @brief Internal Hook: Retrieves the equality functor.
-    HMM_NODISCARD HMM_CONSTEXPR_14 Eq& equal() noexcept {
+    HMM_NODISCARD HMM_CONSTEXPR_14 key_equal& equal() noexcept {
         return members_.get_eq();
     }
 
@@ -902,12 +980,12 @@ class raw_hash_set {
     }
 
     /// @brief Internal Hook: Retrieves the hashing functor (const context).
-    HMM_NODISCARD constexpr const Hash& hasher() const noexcept {
+    HMM_NODISCARD constexpr const hasher_type& hasher() const noexcept {
         return members_.get_hasher();
     }
 
     /// @brief Internal Hook: Retrieves the equality functor (const context).
-    HMM_NODISCARD constexpr const Eq& equal() const noexcept {
+    HMM_NODISCARD constexpr const key_equal& equal() const noexcept {
         return members_.get_eq();
     }
 
