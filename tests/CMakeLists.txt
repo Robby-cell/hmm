@@ -24,4 +24,13 @@ set_target_properties(run_tests
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF)
 
+if(MSVC)
+    # For Visual Studio (MSVC)
+    target_compile_options(run_tests PRIVATE /Zi)
+    target_link_options(run_tests PRIVATE /DEBUG)
+else()
+    # For GCC and Clang
+    target_compile_options(run_tests PRIVATE -g)
+endif()
+
 gtest_discover_tests(run_tests)

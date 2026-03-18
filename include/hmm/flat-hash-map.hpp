@@ -50,17 +50,15 @@ struct MapPolicy;
 ///
 /// @tparam Key The type of keys stored in the map.
 /// @tparam Value The type of mapped values.
-/// @tparam Hash The hashing functor. Defaults to `hmm::CityHash<Key>`.
-/// @tparam KeyEqual The equality functor. Defaults to `std::equal_to<Key>`.
-/// @tparam Alloc The allocator used for memory management.
-template <class Key, class Value, class Hash = CityHash<Key>,
-          class KeyEqual = std::equal_to<Key>,
-          class Alloc =
-              std::allocator<typename MapPolicy<Key, Value>::slot_type>>
-class flat_hash_map : protected internal::raw_hash_map<MapPolicy<Key, Value>,
-                                                       Hash, KeyEqual, Alloc> {
-    using Base =
-        internal::raw_hash_map<MapPolicy<Key, Value>, Hash, KeyEqual, Alloc>;
+/// @tparam TArgs Variadic template arguments specifying optionally:
+///               1. Hash functor (Defaults to `hmm::CityHash<Key>`)
+///               2. Equality functor (Defaults to `std::equal_to<Key>`)
+///               3. Allocator (Defaults to `std::allocator<std::pair<Key,
+///               Value>>`)
+template <class Key, class Value, class... TArgs>
+class flat_hash_map
+    : protected internal::raw_hash_map<MapPolicy<Key, Value>, TArgs...> {
+    using Base = internal::raw_hash_map<MapPolicy<Key, Value>, TArgs...>;
 
    public:
     using policy_type = typename Base::policy_type;
@@ -209,6 +207,16 @@ class flat_hash_map : protected internal::raw_hash_map<MapPolicy<Key, Value>,
         return Base::operator[](std::move(key));
     }
 
+    /// @brief Accesses the mapped value associated with the given key, with
+    /// bounds checking.
+    /// @details Searches the map for the specified key. If found, returns a
+    /// mutable reference to the mapped value. Unlike `operator[]`, this method
+    /// does not insert a new element if the key is missing; instead, it throws
+    /// an exception.
+    /// @param key The key to look up.
+    /// @return A mutable reference to the `mapped_type`.
+    /// @throws std::out_of_range If the requested key does not exist within the
+    /// container.
     HMM_NODISCARD HMM_CONSTEXPR_20 mapped_type& at(const key_type& key) {
         auto it = find(key);
         if (it == end()) {
@@ -216,6 +224,15 @@ class flat_hash_map : protected internal::raw_hash_map<MapPolicy<Key, Value>,
         }
         return it->second;
     }
+
+    /// @brief Accesses the mapped value associated with the given key, with
+    /// bounds checking (const context).
+    /// @details A constant-qualified version of `at()` for use with const
+    /// `flat_hash_map` instances.
+    /// @param key The key to look up.
+    /// @return A constant reference to the `mapped_type`.
+    /// @throws std::out_of_range If the requested key does not exist within the
+    /// container.
     HMM_NODISCARD HMM_CONSTEXPR_20 const mapped_type& at(
         const key_type& key) const {
         auto it = find(key);
@@ -226,13 +243,29 @@ class flat_hash_map : protected internal::raw_hash_map<MapPolicy<Key, Value>,
     }
 };
 
+/// @brief Policy trait defining the storage and interface requirements for
+/// `flat_hash_map`.
+/// @tparam K The key type.
+/// @tparam V The mapped value type.
 template <typename K, typename V>
 struct MapPolicy {
     using key_type = K;
     using mapped_type = V;
+    /// @brief The public-facing value type (pair with const key).
     using value_type = std::pair<const K, V>;
+    /// @brief The internal storage type (pair with mutable key to support
+    /// move-rehash).
     using slot_type = std::pair<K, V>;
 
+    /// @brief Default hasher used when none is provided to the map.
+    using default_hasher_type = CityHash<key_type>;
+    /// @brief Default equality functor used when none is provided to the map.
+    using default_eq_type = std::equal_to<key_type>;
+    /// @brief Default allocator used for map nodes.
+    using default_allocator_type = std::allocator<slot_type>;
+
+    /// @name Key Extraction
+    ///@{
     HMM_NODISCARD static constexpr const key_type& key(
         const slot_type& pair) noexcept {
         return pair.first;
@@ -242,7 +275,10 @@ struct MapPolicy {
         const value_type& pair) noexcept {
         return pair.first;
     }
+    ///@}
 
+    /// @name Value Extraction
+    ///@{
     HMM_NODISCARD static constexpr mapped_type& value(
         slot_type& pair) noexcept {
         return pair.second;
@@ -252,7 +288,14 @@ struct MapPolicy {
         const slot_type& pair) noexcept {
         return pair.second;
     }
+    ///@}
 
+    /// @brief Converts the internal mutable slot representation to the public
+    /// `value_type`.
+    /// @details This uses `reinterpret_cast` because the memory layout of
+    /// `std::pair<K, V>` and `std::pair<const K, V>` is standard-layout
+    /// compatible. This allows users to iterate over the map as if it were
+    /// `std::pair<const K, V>` without copying.
     HMM_NODISCARD static value_type& value_from_slot(slot_type& slot) noexcept {
         return reinterpret_cast<value_type&>(slot);
     }
@@ -262,6 +305,9 @@ struct MapPolicy {
         return reinterpret_cast<const value_type&>(slot);
     }
 
+    /// @brief Constructs an element in-place within a slot.
+    /// @tparam Alloc The allocator type.
+    /// @tparam Args Forwarded argument types for construction.
     template <class Alloc, class... Args>
     static HMM_CONSTEXPR_20 void construct(Alloc& alloc, slot_type* ptr,
                                            Args&&... args) {
@@ -269,6 +315,8 @@ struct MapPolicy {
                                                 std::forward<Args>(args)...);
     }
 
+    /// @brief Destroys an element housed within a slot.
+    /// @tparam Alloc The allocator type.
     template <class Alloc>
     static HMM_CONSTEXPR_20 void destroy(Alloc& alloc, slot_type* ptr) {
         std::allocator_traits<Alloc>::destroy(alloc, ptr);
@@ -277,12 +325,18 @@ struct MapPolicy {
 
 #if HMM_HAS_CXX_17
 namespace pmr {
-template <class Key, class Value, class Hash = CityHash<Key>,
-          class Eq = std::equal_to<Key>>
+/// @brief Type alias for `flat_hash_map` using C++17 Polymorphic Memory
+/// Resources.
+/// @details This enables using custom memory arenas (like
+/// `std::pmr::monotonic_buffer_resource`) to allocate map elements, which is
+/// ideal for performance-sensitive, short-lived containers.
+template <class Key, class Value,
+          class Hash = typename MapPolicy<Key, Value>::default_hasher_type,
+          class Eq = typename MapPolicy<Key, Value>::default_eq_type>
 using flat_hash_map = ::hmm::flat_hash_map<
     Key, Value, Hash, Eq,
     std::pmr::polymorphic_allocator<typename MapPolicy<Key, Value>::slot_type>>;
-}
+}  // namespace pmr
 #endif
 
 }  // namespace hmm

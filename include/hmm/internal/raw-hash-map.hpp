@@ -38,14 +38,11 @@ namespace internal {
 /// extracted
 ///                from the underlying slot. For maps, the slot is usually a
 ///                `std::pair`.
-/// @tparam Hash The hashing algorithm/functor used to compute the 64-bit hash.
-/// @tparam Eq The equality operator used to compare keys during lookup or
-/// insertion.
-/// @tparam Alloc The allocator used for managing the lifecycle of the elements
-/// and memory block.
-template <class Policy, class Hash, class Eq, class Alloc>
-class raw_hash_map : protected raw_hash_set<Policy, Hash, Eq, Alloc> {
-    using Base = raw_hash_set<Policy, Hash, Eq, Alloc>;
+/// @tparam TArgs Variadic pack defining [Hash, Eq, Allocator]. Falls back to
+/// Policy defaults.
+template <class Policy, class... TArgs>
+class raw_hash_map : protected raw_hash_set<Policy, TArgs...> {
+    using Base = raw_hash_set<Policy, TArgs...>;
 
    public:
     using policy_type = typename Base::policy_type;
@@ -146,11 +143,11 @@ class raw_hash_map : protected raw_hash_set<Policy, Hash, Eq, Alloc> {
     /// key.
     HMM_NODISCARD HMM_CONSTEXPR_20 mapped_type& operator[](
         const key_type& key) {
-        return this->try_emplace(key).first->second;
+        return try_emplace(key).first->second;
     }
 
     HMM_NODISCARD HMM_CONSTEXPR_20 mapped_type& operator[](key_type&& key) {
-        return this->try_emplace(std::move(key)).first->second;
+        return try_emplace(std::move(key)).first->second;
     }
 
     /// @brief Accesses the mapped value associated with the given key, with
@@ -165,7 +162,7 @@ class raw_hash_map : protected raw_hash_set<Policy, Hash, Eq, Alloc> {
     /// @throws std::out_of_range If the requested key does not exist within the
     /// container.
     HMM_NODISCARD HMM_CONSTEXPR_20 mapped_type& at(const key_type& key) {
-        auto it = this->find(key);
+        auto it = find(key);
         auto my_end = end();
         if (it == my_end) {
             ThrowOutOfRange("raw_hash_map<>::at()");
@@ -182,7 +179,7 @@ class raw_hash_map : protected raw_hash_set<Policy, Hash, Eq, Alloc> {
     /// container.
     HMM_NODISCARD HMM_CONSTEXPR_20 const mapped_type& at(
         const key_type& key) const {
-        auto it = this->find(key);
+        auto it = find(key);
         auto my_end = end();
         if (it == my_end) {
             ThrowOutOfRange("raw_hash_map<>::at()const");
