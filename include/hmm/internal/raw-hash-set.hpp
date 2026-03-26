@@ -43,8 +43,7 @@ namespace internal {
 /// explicitly requested.
 ///
 /// @tparam T The type of the underlying object being pointed to.
-template <class T>
-union MaybeUninitialized {
+template <class T> union MaybeUninitialized {
     /// @brief Constructs the union with a provided pointer.
     /// @param ptr The pointer to initialize the union with.
     constexpr T* get() const noexcept {
@@ -156,10 +155,10 @@ struct HeapPtrs {
 
 /// @brief Encapsulates the runtime sizing metrics of the hash set.
 struct SizeInfo {
-    size_t size_ = 0;  ///< The number of active, constructed elements.
+    size_t size_ = 0; ///< The number of active, constructed elements.
 
     size_t capacity_ =
-        0;  ///< The total number of allocated slots (must be a power of two).
+        0; ///< The total number of allocated slots (must be a power of two).
 };
 
 /// @brief Centralized state object storing policy dependencies and table
@@ -186,8 +185,7 @@ struct CommonMembers : CompressedTuple<Hash, Eq, Alloc> {
                                 int>::type = 0>
     HMM_CONSTEXPR_20 inline CommonMembers(H&& h, E&& e, A&& a)
         : Base{static_cast<H&&>(h), static_cast<E&&>(e), static_cast<A&&>(a)},
-          ptrs_{},
-          size_info_{} {}
+          ptrs_{}, size_info_{} {}
 
     /// @brief Default constructor. Value-initializes all sub-components.
     CommonMembers() = default;
@@ -268,9 +266,8 @@ struct HasIsTransparent<T,
 /// set vs map) and provides default types.
 /// @tparam TArgs Variadic pack defining [Hash, Eq, Allocator]. Falls back to
 /// Policy defaults.
-template <class Policy, class... TArgs>
-class raw_hash_set {
-   public:
+template <class Policy, class... TArgs> class raw_hash_set {
+  public:
     using policy_type = Policy;
 
     using hasher_type = typename detail::TypeAtIndexOrDefault<
@@ -284,11 +281,11 @@ class raw_hash_set {
     using difference_type = std::ptrdiff_t;
     using slot_type = typename policy_type::slot_type;
 
-   private:
+  private:
     using provided_allocator_type = typename detail::TypeAtIndexOrDefault<
         2, typename policy_type::default_allocator_type, TArgs...>::type;
 
-   public:
+  public:
     // Use a byte allocator for the unified memory block
     using byte_allocator = typename std::allocator_traits<
         provided_allocator_type>::template rebind_alloc<unsigned char>;
@@ -298,21 +295,19 @@ class raw_hash_set {
     using slot_traits = std::allocator_traits<slot_allocator>;
     using pointer = typename slot_traits::pointer;
 
-   private:
+  private:
     using Members = CommonMembers<hasher_type, key_equal, byte_allocator>;
 
     static constexpr size_t kGroupWidth = Group::kWidth;
 
-   public:
+  public:
     /// @brief The underlying iterator implementation.
     /// @tparam Traits Differentiates between const and mutable iterators.
-    template <typename Traits>
-    class BasicIterator {
+    template <typename Traits> class BasicIterator {
         friend raw_hash_set;
-        template <typename>
-        friend class iterator_impl;
+        template <typename> friend class iterator_impl;
 
-       public:
+      public:
         using iterator_category = std::forward_iterator_tag;
         using value_type = typename raw_hash_set::value_type;
         using difference_type = std::ptrdiff_t;
@@ -332,8 +327,7 @@ class raw_hash_set {
                                                        OtherTraits::is_const)),
                                                      void>::type>
         constexpr BasicIterator(const BasicIterator<OtherTraits>& other)
-            : ctrl_(other.ctrl_),
-              slots_(other.slots_),
+            : ctrl_(other.ctrl_), slots_(other.slots_),
               end_ctrl_(other.end_ctrl_) {}
 
         HMM_NODISCARD constexpr reference operator*() const {
@@ -358,16 +352,16 @@ class raw_hash_set {
             return tmp;
         }
 
-        HMM_NODISCARD constexpr bool operator==(
-            const BasicIterator& b) const noexcept {
+        HMM_NODISCARD constexpr bool
+        operator==(const BasicIterator& b) const noexcept {
             return slots_ == b.slots_;
         }
-        HMM_NODISCARD constexpr bool operator!=(
-            const BasicIterator& b) const noexcept {
+        HMM_NODISCARD constexpr bool
+        operator!=(const BasicIterator& b) const noexcept {
             return !this->operator==(b);
         }
 
-       private:
+      private:
         constexpr BasicIterator(ctrl_t* ctrl, slot_type* slot, ctrl_t* end_ctrl)
             : ctrl_{ctrl}, slots_{slot}, end_ctrl_{end_ctrl} {}
 
@@ -409,10 +403,10 @@ class raw_hash_set {
     /// @brief Returned by internal insertion preparations, containing index
     /// routing data.
     struct HMM_NODISCARD FindInfo {
-        size_t index;      ///< The mapped slot index where the element exists
-                           ///< or should be inserted.
-        size_t full_hash;  ///< The pre-computed full 64-bit hash.
-        bool found;  ///< True if the key already exists at the target index.
+        size_t index;     ///< The mapped slot index where the element exists
+                          ///< or should be inserted.
+        size_t full_hash; ///< The pre-computed full 64-bit hash.
+        bool found; ///< True if the key already exists at the target index.
     };
 
     /// @brief Default constructs an empty hash set with no allocated memory.
@@ -424,17 +418,17 @@ class raw_hash_set {
 
     /// @brief Constructs a hash set from an iterator range.
     template <class Iter, class Sentinel>
-    HMM_CONSTEXPR_20 raw_hash_set(
-        Iter begin, Sentinel end,
-        const allocator_type& alloc = allocator_type())
+    HMM_CONSTEXPR_20
+    raw_hash_set(Iter begin, Sentinel end,
+                 const allocator_type& alloc = allocator_type())
         : raw_hash_set(alloc) {
         insert(begin, end);
     }
 
     /// @brief Constructs a hash set from an initializer list.
-    HMM_CONSTEXPR_20 raw_hash_set(
-        std::initializer_list<value_type> init,
-        const allocator_type& alloc = allocator_type())
+    HMM_CONSTEXPR_20
+    raw_hash_set(std::initializer_list<value_type> init,
+                 const allocator_type& alloc = allocator_type())
         : raw_hash_set(init.begin(), init.end(), alloc) {}
 
     /// @brief Destructs the container, destroying all elements and releasing
@@ -574,8 +568,7 @@ class raw_hash_set {
     }
 
     /// @brief Inserts a range of elements into the container.
-    template <class InputIt>
-    void insert(InputIt first, InputIt last) {
+    template <class InputIt> void insert(InputIt first, InputIt last) {
         for (; first != last; ++first) {
             emplace(*first);
         }
@@ -907,7 +900,7 @@ class raw_hash_set {
         size_t ctrl_size = cap + kGroupWidth;
         size_t slot_align = alignof(slot_type);
         size_t slot_offset = (ctrl_size + slot_align - 1) & ~(slot_align - 1);
-        size_t total_bytes = slot_offset + cap * sizeof(slot_type);
+        size_t total_bytes = slot_offset + (cap * sizeof(slot_type));
 
         unsigned char* ptr = std::allocator_traits<byte_allocator>::allocate(
             get_allocator(), total_bytes);
@@ -924,7 +917,7 @@ class raw_hash_set {
         size_t ctrl_size = cap + kGroupWidth;
         size_t slot_align = alignof(slot_type);
         size_t slot_offset = (ctrl_size + slot_align - 1) & ~(slot_align - 1);
-        size_t total_bytes = slot_offset + cap * sizeof(slot_type);
+        size_t total_bytes = slot_offset + (cap * sizeof(slot_type));
 
         std::allocator_traits<byte_allocator>::deallocate(
             get_allocator(), reinterpret_cast<unsigned char*>(ctrl_pointer),
@@ -974,8 +967,8 @@ class raw_hash_set {
     HMM_NODISCARD HMM_CONSTEXPR_14 byte_allocator& get_allocator() noexcept {
         return members_.get_allocator();
     }
-    HMM_NODISCARD HMM_CONSTEXPR_14 const byte_allocator& get_allocator()
-        const noexcept {
+    HMM_NODISCARD HMM_CONSTEXPR_14 const byte_allocator&
+    get_allocator() const noexcept {
         return members_.get_allocator();
     }
 
@@ -992,7 +985,7 @@ class raw_hash_set {
     Members members_;
 };
 
-}  // namespace internal
-}  // namespace hmm
+} // namespace internal
+} // namespace hmm
 
-#endif  // HMM_HMM_INTERNAL_RAW_HASH_SET_HPP
+#endif // HMM_HMM_INTERNAL_RAW_HASH_SET_HPP

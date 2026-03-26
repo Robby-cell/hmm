@@ -33,8 +33,7 @@
 namespace hmm {
 
 /// @brief Forward declaration of the set policy traits.
-template <typename T>
-struct SetPolicy;
+template <typename T> struct SetPolicy;
 
 /// @brief A high-performance, SIMD-accelerated flat hash set.
 ///
@@ -58,7 +57,7 @@ class flat_hash_set
     : protected internal::raw_hash_set<SetPolicy<Contained>, TArgs...> {
     using Base = internal::raw_hash_set<SetPolicy<Contained>, TArgs...>;
 
-   public:
+  public:
     using policy_type = typename Base::policy_type;
     using hasher_type = typename Base::hasher_type;
     using key_equal = typename Base::key_equal;
@@ -76,16 +75,16 @@ class flat_hash_set
     using iterator = typename Base::const_iterator;
     using const_iterator = typename Base::const_iterator;
 
-   public:
+  public:
     /// @brief Default constructs an empty flat hash set.
     HMM_CONSTEXPR_20 flat_hash_set() = default;
 
     /// @brief Constructs the set with the contents of an initializer list.
     /// @param initial The std::initializer_list of elements.
     /// @param alloc The allocator instance to use.
-    HMM_CONSTEXPR_20 flat_hash_set(
-        std::initializer_list<slot_type> initial,
-        const allocator_type& alloc = allocator_type())
+    HMM_CONSTEXPR_20
+    flat_hash_set(std::initializer_list<slot_type> initial,
+                  const allocator_type& alloc = allocator_type())
         : Base(initial.begin(), initial.end(), alloc) {}
 
     /// @brief Constructs the set with the contents of a range.
@@ -95,9 +94,9 @@ class flat_hash_set
     /// @param end The end of the range.
     /// @param alloc The allocator instance to use.
     template <class Iter, class Sentinel>
-    HMM_CONSTEXPR_20 flat_hash_set(
-        Iter begin, Sentinel end,
-        const allocator_type& alloc = allocator_type())
+    HMM_CONSTEXPR_20
+    flat_hash_set(Iter begin, Sentinel end,
+                  const allocator_type& alloc = allocator_type())
         : Base(begin, end, alloc) {}
 
     /// @brief Constructs an empty set utilizing a specific allocator.
@@ -144,8 +143,7 @@ class flat_hash_set
     /// @tparam InputIt Iterator type.
     /// @param first The start of the range.
     /// @param last The end of the range.
-    template <class InputIt>
-    void insert(InputIt first, InputIt last) {
+    template <class InputIt> void insert(InputIt first, InputIt last) {
         return Base::insert(first, last);
     }
 
@@ -162,8 +160,7 @@ class flat_hash_set
     /// @return A pair consisting of an iterator to the inserted (or existing)
     ///         element, and a bool indicating whether insertion actually
     ///         occurred.
-    template <class... Args>
-    std::pair<iterator, bool> emplace(Args&&... args) {
+    template <class... Args> std::pair<iterator, bool> emplace(Args&&... args) {
         return Base::emplace(std::forward<Args>(args)...);
     }
 
@@ -207,8 +204,7 @@ class flat_hash_set
 /// @brief Policy trait struct detailing how keys and values are extracted and
 /// stored for a `flat_hash_set`.
 /// @tparam T The element type stored in the set.
-template <typename T>
-struct SetPolicy {
+template <typename T> struct SetPolicy {
     using key_type = T;
     using mapped_type = void;
     using value_type = T;
@@ -222,20 +218,22 @@ struct SetPolicy {
     using default_allocator_type = std::allocator<slot_type>;
 
     /// @brief Extracts the key from a given slot. (Identity for a Set).
-    HMM_NODISCARD static constexpr const key_type& key(
-        const slot_type& slot) noexcept {
+    HMM_NODISCARD static constexpr const key_type&
+    key(const slot_type& slot) noexcept {
+        // NOLINTNEXTLINE(bugprone-return-const-ref-from-parameter)
         return slot;
     }
 
     /// @brief Extracts the mutable value from a given slot.
-    HMM_NODISCARD static constexpr value_type& value_from_slot(
-        slot_type& slot) noexcept {
+    HMM_NODISCARD static constexpr value_type&
+    value_from_slot(slot_type& slot) noexcept {
         return slot;
     }
 
     /// @brief Extracts the constant value from a given slot.
-    HMM_NODISCARD static constexpr const value_type& value_from_slot(
-        const slot_type& slot) noexcept {
+    HMM_NODISCARD static constexpr const value_type&
+    value_from_slot(const slot_type& slot) noexcept {
+        // NOLINTNEXTLINE(bugprone-return-const-ref-from-parameter)
         return slot;
     }
 
@@ -270,9 +268,9 @@ template <class Contained,
 using flat_hash_set = ::hmm::flat_hash_set<
     Contained, Hash, Eq,
     std::pmr::polymorphic_allocator<typename SetPolicy<Contained>::slot_type>>;
-}  // namespace pmr
+} // namespace pmr
 #endif
 
-}  // namespace hmm
+} // namespace hmm
 
-#endif  // HMM_HMM_FLAT_HASH_SET_HPP
+#endif // HMM_HMM_FLAT_HASH_SET_HPP

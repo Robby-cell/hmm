@@ -44,7 +44,7 @@ template <class Policy, class... TArgs>
 class raw_hash_map : protected raw_hash_set<Policy, TArgs...> {
     using Base = raw_hash_set<Policy, TArgs...>;
 
-   public:
+  public:
     using policy_type = typename Base::policy_type;
     using hasher_type = typename Base::hasher_type;
     using key_equal = typename Base::key_equal;
@@ -74,9 +74,9 @@ class raw_hash_map : protected raw_hash_set<Policy, TArgs...> {
     /// @brief Constructs a hash map using an initializer list of slot values.
     /// @param initial The list of key-value pairs to populate the map with.
     /// @param alloc The allocator instance to use for memory management.
-    HMM_CONSTEXPR_20 raw_hash_map(
-        std::initializer_list<slot_type> initial,
-        const allocator_type& alloc = allocator_type())
+    HMM_CONSTEXPR_20
+    raw_hash_map(std::initializer_list<slot_type> initial,
+                 const allocator_type& alloc = allocator_type())
         : Base(initial, alloc) {}
 
     /// @brief Constructs a hash map from a range defined by iterators.
@@ -86,9 +86,9 @@ class raw_hash_map : protected raw_hash_set<Policy, TArgs...> {
     /// @param end The end of the range to insert.
     /// @param alloc The allocator instance to use.
     template <class Iter, class Sentinel>
-    HMM_CONSTEXPR_20 raw_hash_map(
-        Iter begin, Sentinel end,
-        const allocator_type& alloc = allocator_type())
+    HMM_CONSTEXPR_20
+    raw_hash_map(Iter begin, Sentinel end,
+                 const allocator_type& alloc = allocator_type())
         : Base(begin, end, alloc) {}
 
     /// @brief Constructs an empty hash map utilizing a specific allocator.
@@ -141,8 +141,8 @@ class raw_hash_map : protected raw_hash_set<Policy, TArgs...> {
     /// @param key The key to search for or insert.
     /// @return A mutable reference to the `mapped_type` associated with the
     /// key.
-    HMM_NODISCARD HMM_CONSTEXPR_20 mapped_type& operator[](
-        const key_type& key) {
+    HMM_NODISCARD HMM_CONSTEXPR_20 mapped_type&
+    operator[](const key_type& key) {
         return try_emplace(key).first->second;
     }
 
@@ -177,8 +177,8 @@ class raw_hash_map : protected raw_hash_set<Policy, TArgs...> {
     /// @return A constant reference to the `mapped_type`.
     /// @throws std::out_of_range If the requested key does not exist within the
     /// container.
-    HMM_NODISCARD HMM_CONSTEXPR_20 const mapped_type& at(
-        const key_type& key) const {
+    HMM_NODISCARD HMM_CONSTEXPR_20 const mapped_type&
+    at(const key_type& key) const {
         auto it = find(key);
         auto my_end = end();
         if (it == my_end) {
@@ -198,7 +198,7 @@ class raw_hash_map : protected raw_hash_set<Policy, TArgs...> {
     }
 };
 
-}  // namespace internal
-}  // namespace hmm
+} // namespace internal
+} // namespace hmm
 
-#endif  // HMM_HMM_INTERNAL_RAW_HASH_MAP_HPP
+#endif // HMM_HMM_INTERNAL_RAW_HASH_MAP_HPP

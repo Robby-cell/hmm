@@ -64,4 +64,4 @@
 #define HMM_ASSERT(...) assert(__VA_ARGS__)
 #endif
 
-#endif  // HMM_HMM_INTERNAL_MACROS_HPP
+#endif // HMM_HMM_INTERNAL_MACROS_HPP

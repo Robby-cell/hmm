@@ -31,7 +31,7 @@ struct PersonInfo {
     PersonInfo& operator=(PersonInfo&&) noexcept = default;
 
     int age{};
-    Cm height{};
+    Cm height;
 };
 
 struct IgnoreCaseHash {

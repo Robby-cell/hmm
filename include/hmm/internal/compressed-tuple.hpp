@@ -32,8 +32,7 @@ using std::index_sequence;
 using std::index_sequence_for;
 using std::make_index_sequence;
 #else
-template <size_t... Ints>
-struct index_sequence {
+template <size_t... Ints> struct index_sequence {
     using type = index_sequence;
     using value_type = size_t;
 
@@ -46,8 +45,7 @@ template <size_t N, size_t... Next>
 struct make_index_sequence_impl
     : public make_index_sequence_impl<N - 1, N - 1, Next...> {};
 
-template <size_t... Next>
-struct make_index_sequence_impl<0, Next...> {
+template <size_t... Next> struct make_index_sequence_impl<0, Next...> {
     using type = index_sequence<Next...>;
 };
 
@@ -58,9 +56,8 @@ template <class... Ts>
 using index_sequence_for = make_index_sequence<sizeof...(Ts)>;
 #endif
 
-template <size_t Index, class T, class = void>
-struct TupleLeaf {
-   public:
+template <size_t Index, class T, class = void> struct TupleLeaf {
+  public:
     HMM_CONSTEXPR_14 T& get() & noexcept {
         return value_;
     }
@@ -100,7 +97,7 @@ template <size_t Index, class T>
 struct TupleLeaf<Index, T,
                  typename std::enable_if<std::is_empty<T>::value, int>::type>
     : T {
-   public:
+  public:
     template <class Ty,
               typename std::enable_if<
                   !std::is_same<TupleLeaf, typename std::remove_cv<
@@ -144,21 +141,20 @@ struct TupleLeaf<Index, T,
     }
 };
 
-template <class, class... Ts>
-struct CompressedTupleImpl;
+template <class, class... Ts> struct CompressedTupleImpl;
 
 template <size_t... Is, class... Ts>
 struct CompressedTupleImpl<index_sequence<Is...>, Ts...>
     : TupleLeaf<Is, Ts>... {
-   public:
+  public:
     template <size_t... Idxs, class... Args>
-    HMM_CONSTEXPR_20 inline CompressedTupleImpl(index_sequence<Idxs...>,
-                                                Args&&... args)
+    HMM_CONSTEXPR_20 inline CompressedTupleImpl(
+        index_sequence<Idxs...> /* sequence */, Args&&... args)
         : TupleLeaf<Idxs, typename detail::TypeAtIndex<
                               Idxs, detail::TypePack<Ts...>>::type>{
               static_cast<Args&&>(args)}... {}
 
-   private:
+  private:
     template <size_t I, class Self>
     static HMM_CONSTEXPR_14 auto GetImpl(Self&& self) noexcept
         -> decltype(detail::forward_like<Self>(
@@ -171,7 +167,7 @@ struct CompressedTupleImpl<index_sequence<Is...>, Ts...>
                                   I, detail::TypePack<Ts...>>::type>::get());
     }
 
-   public:
+  public:
     template <size_t I>
     HMM_CONSTEXPR_14 auto get() & noexcept -> decltype(GetImpl<I>(*this)) {
         return GetImpl<I>(*this);
@@ -197,10 +193,10 @@ struct CompressedTupleImpl<index_sequence<Is...>, Ts...>
 
 template <class... Ts>
 struct CompressedTuple : CompressedTupleImpl<index_sequence_for<Ts...>, Ts...> {
-   private:
+  private:
     using Base = CompressedTupleImpl<index_sequence_for<Ts...>, Ts...>;
 
-   public:
+  public:
     template <class... Args>
     HMM_CONSTEXPR_20 inline CompressedTuple(Args&&... args)
         : Base(index_sequence_for<Args...>{}, static_cast<Args&&>(args)...) {}
@@ -208,7 +204,7 @@ struct CompressedTuple : CompressedTupleImpl<index_sequence_for<Ts...>, Ts...> {
     using Base::get;
 };
 
-}  // namespace internal
-}  // namespace hmm
+} // namespace internal
+} // namespace hmm
 
-#endif  // HMM_HMM_INTERNAL_COMPRESSED_TUPLE_HPP
+#endif // HMM_HMM_INTERNAL_COMPRESSED_TUPLE_HPP

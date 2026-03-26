@@ -33,8 +33,7 @@
 namespace hmm {
 
 /// @brief Forward declaration of the map policy traits.
-template <typename K, typename V>
-struct MapPolicy;
+template <typename K, typename V> struct MapPolicy;
 
 /// @brief A high-performance, SIMD-accelerated flat hash map.
 ///
@@ -60,7 +59,7 @@ class flat_hash_map
     : protected internal::raw_hash_map<MapPolicy<Key, Value>, TArgs...> {
     using Base = internal::raw_hash_map<MapPolicy<Key, Value>, TArgs...>;
 
-   public:
+  public:
     using policy_type = typename Base::policy_type;
     using hasher_type = typename Base::hasher_type;
     using key_equal = typename Base::key_equal;
@@ -85,9 +84,9 @@ class flat_hash_map
     /// @brief Constructs the map with the contents of an initializer list.
     /// @param initial The std::initializer_list of key-value pairs.
     /// @param alloc The allocator instance to use.
-    HMM_CONSTEXPR_20 flat_hash_map(
-        std::initializer_list<slot_type> initial,
-        const allocator_type& alloc = allocator_type())
+    HMM_CONSTEXPR_20
+    flat_hash_map(std::initializer_list<slot_type> initial,
+                  const allocator_type& alloc = allocator_type())
         : Base(initial.begin(), initial.end(), alloc) {}
 
     /// @brief Constructs the map with the contents of a range.
@@ -97,9 +96,9 @@ class flat_hash_map
     /// @param end The end of the range.
     /// @param alloc The allocator instance to use.
     template <class Iter, class Sentinel>
-    HMM_CONSTEXPR_20 flat_hash_map(
-        Iter begin, Sentinel end,
-        const allocator_type& alloc = allocator_type())
+    HMM_CONSTEXPR_20
+    flat_hash_map(Iter begin, Sentinel end,
+                  const allocator_type& alloc = allocator_type())
         : Base(begin, end, alloc) {}
 
     /// @brief Constructs an empty map utilizing a specific allocator.
@@ -193,8 +192,8 @@ class flat_hash_map
     /// default-constructed value if the key does not already exist.
     /// @param key The key to access.
     /// @return A reference to the associated mapped value.
-    HMM_NODISCARD HMM_CONSTEXPR_20 mapped_type& operator[](
-        const key_type& key) {
+    HMM_NODISCARD HMM_CONSTEXPR_20 mapped_type&
+    operator[](const key_type& key) {
         return Base::operator[](key);
     }
 
@@ -233,8 +232,8 @@ class flat_hash_map
     /// @return A constant reference to the `mapped_type`.
     /// @throws std::out_of_range If the requested key does not exist within the
     /// container.
-    HMM_NODISCARD HMM_CONSTEXPR_20 const mapped_type& at(
-        const key_type& key) const {
+    HMM_NODISCARD HMM_CONSTEXPR_20 const mapped_type&
+    at(const key_type& key) const {
         auto it = find(key);
         if (it == end()) {
             throw std::out_of_range("flat_hash_map::at");
@@ -247,8 +246,7 @@ class flat_hash_map
 /// `flat_hash_map`.
 /// @tparam K The key type.
 /// @tparam V The mapped value type.
-template <typename K, typename V>
-struct MapPolicy {
+template <typename K, typename V> struct MapPolicy {
     using key_type = K;
     using mapped_type = V;
     /// @brief The public-facing value type (pair with const key).
@@ -266,26 +264,26 @@ struct MapPolicy {
 
     /// @name Key Extraction
     ///@{
-    HMM_NODISCARD static constexpr const key_type& key(
-        const slot_type& pair) noexcept {
+    HMM_NODISCARD static constexpr const key_type&
+    key(const slot_type& pair) noexcept {
         return pair.first;
     }
 
-    HMM_NODISCARD static constexpr const key_type& key(
-        const value_type& pair) noexcept {
+    HMM_NODISCARD static constexpr const key_type&
+    key(const value_type& pair) noexcept {
         return pair.first;
     }
     ///@}
 
     /// @name Value Extraction
     ///@{
-    HMM_NODISCARD static constexpr mapped_type& value(
-        slot_type& pair) noexcept {
+    HMM_NODISCARD static constexpr mapped_type&
+    value(slot_type& pair) noexcept {
         return pair.second;
     }
 
-    HMM_NODISCARD static constexpr const mapped_type& value(
-        const slot_type& pair) noexcept {
+    HMM_NODISCARD static constexpr const mapped_type&
+    value(const slot_type& pair) noexcept {
         return pair.second;
     }
     ///@}
@@ -300,8 +298,8 @@ struct MapPolicy {
         return reinterpret_cast<value_type&>(slot);
     }
 
-    HMM_NODISCARD static const value_type& value_from_slot(
-        const slot_type& slot) noexcept {
+    HMM_NODISCARD static const value_type&
+    value_from_slot(const slot_type& slot) noexcept {
         return reinterpret_cast<const value_type&>(slot);
     }
 
@@ -336,9 +334,9 @@ template <class Key, class Value,
 using flat_hash_map = ::hmm::flat_hash_map<
     Key, Value, Hash, Eq,
     std::pmr::polymorphic_allocator<typename MapPolicy<Key, Value>::slot_type>>;
-}  // namespace pmr
+} // namespace pmr
 #endif
 
-}  // namespace hmm
+} // namespace hmm
 
-#endif  // HMM_HMM_FLAT_HASH_MAP_HPP
+#endif // HMM_HMM_FLAT_HASH_MAP_HPP

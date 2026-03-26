@@ -56,11 +56,7 @@ HMM_HASH_QUALIFIER uint128 CityHash128(const char* s, size_t len);
 HMM_HASH_QUALIFIER uint128 CityHash128WithSeed(const char* s, size_t len,
                                                uint128 seed);
 
-}  // namespace internal
-}  // namespace hmm
-
-#ifndef HMM_HASH_IMPL_COMPILED
-#include "hmm/internal/city-hash-impl.inl.hpp"  // IWYU pragma: export
-#endif
+} // namespace internal
+} // namespace hmm
 
 #endif

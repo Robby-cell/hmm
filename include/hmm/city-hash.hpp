@@ -14,16 +14,15 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef HMM_HMM_HASHER_HPP
-#define HMM_HMM_HASHER_HPP
+#ifndef HMM_CITY_HASH_HPP
+#define HMM_CITY_HASH_HPP
 
 #include "hmm/internal/city-hash-mixers.hpp"
 #include "hmm/internal/macros.hpp"
 
 namespace hmm {
 
-template <typename T>
-struct CityHash {
+template <typename T> struct CityHash {
     HMM_STATIC_CALL size_t operator()(const T& value) HMM_STATIC_CALL_CONST {
         return internal::CityHashState::combine(
                    internal::CityHashState::Create(), value)
@@ -32,15 +31,14 @@ struct CityHash {
 };
 
 // Void specialization (often used in transparent comparators/hashers)
-template <>
-struct CityHash<void> {
+template <> struct CityHash<void> {
     template <typename T>
     HMM_STATIC_CALL size_t operator()(const T& value) HMM_STATIC_CALL_CONST {
         return CityHash<T>{}(value);
     }
 };
 
-}  // namespace hmm
+} // namespace hmm
 
 // ============================================================================
 // How to create a custom hashable type:
@@ -56,4 +54,4 @@ struct CityHash<void> {
 //     }
 // };
 
-#endif  // HMM_HMM_HASHER_HPP
+#endif // HMM_HMM_HASHER_HPP

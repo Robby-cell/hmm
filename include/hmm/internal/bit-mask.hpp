@@ -28,7 +28,7 @@
 #endif
 
 // Detect SIMD Platform
-#if defined(__SSE2__) || \
+#if defined(__SSE2__) ||                                                       \
     (defined(_M_X64) || (defined(_M_IX86_FP) && _M_IX86_FP >= 2))
 #define HMM_SSE2 1
 #include <emmintrin.h>
@@ -55,7 +55,7 @@ inline uint32_t CountTrailingZeros(uint32_t n) {
 
 // Wrapper for the result of a SIMD comparison
 class BitMask {
-   public:
+  public:
     constexpr explicit BitMask(uint32_t mask) : mask_(mask) {}
 
     uint32_t first_index() const {
@@ -72,7 +72,7 @@ class BitMask {
         return mask_ != 0;
     }
 
-   private:
+  private:
     uint32_t mask_;
 };
 
@@ -83,7 +83,7 @@ struct Group {
 #elif defined(HMM_NEON)
     uint8x16_t data;
 #else
-    uint64_t data[2];  // Fallback
+    uint64_t data[2]; // Fallback
 #endif
 
     static constexpr size_t kWidth = 16;
@@ -149,7 +149,7 @@ struct Group {
     }
 };
 
-}  // namespace internal
-}  // namespace hmm
+} // namespace internal
+} // namespace hmm
 
 #endif

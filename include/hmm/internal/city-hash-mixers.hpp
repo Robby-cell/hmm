@@ -25,6 +25,10 @@
 #include "hmm/internal/city-hash-fwd.hpp"
 #include "hmm/internal/macros.hpp"
 
+#ifndef HMM_HASH_IMPL_COMPILED
+#include "hmm/internal/city-hash-impl.inl.hpp" // IWYU pragma: export
+#endif
+
 namespace hmm {
 
 // SFINAE helpers
@@ -41,7 +45,7 @@ using enable_if_arithmetic_t =
 template <typename T, typename ReturnType>
 using enable_if_enum_t =
     typename std::enable_if<std::is_enum<T>::value, ReturnType>::type;
-}  // namespace internal
+} // namespace internal
 
 // ============================================================================
 // DEFAULT HashValue OVERLOADS
@@ -66,16 +70,14 @@ internal::enable_if_enum_t<T, H> HashValue(H h, T t) {
 }
 
 // 3. Pointers
-template <typename H, typename T>
-H HashValue(H h, T* ptr) {
+template <typename H, typename T> H HashValue(H h, T* ptr) {
     // We hash the address itself
     auto addr = reinterpret_cast<std::uintptr_t>(ptr);
     return H::combine_bytes(std::move(h), &addr, sizeof(addr));
 }
 
 // 4. std::string
-template <typename H>
-H HashValue(H h, const std::string& s) {
+template <typename H> H HashValue(H h, const std::string& s) {
     return H::combine_contiguous(std::move(h), s.data(), s.size());
 }
 
@@ -87,15 +89,15 @@ H HashValue(H h, const std::pair<T1, T2>& p) {
 
 // 6. std::vector (Optimized Contiguous Path for arithmetic types)
 template <typename H, typename T>
-typename std::enable_if<std::is_arithmetic<T>::value, H>::type HashValue(
-    H h, const std::vector<T>& v) {
+typename std::enable_if<std::is_arithmetic<T>::value, H>::type
+HashValue(H h, const std::vector<T>& v) {
     return H::combine_contiguous(std::move(h), v.data(), v.size());
 }
 
 // 7. std::vector (Generic iteration for complex types)
 template <typename H, typename T>
-typename std::enable_if<!std::is_arithmetic<T>::value, H>::type HashValue(
-    H h, const std::vector<T>& v) {
+typename std::enable_if<!std::is_arithmetic<T>::value, H>::type
+HashValue(H h, const std::vector<T>& v) {
     for (const auto& item : v) {
         h = H::combine(std::move(h), item);
     }
@@ -105,7 +107,7 @@ typename std::enable_if<!std::is_arithmetic<T>::value, H>::type HashValue(
 namespace internal {
 
 class CityHashState {
-   public:
+  public:
     // Factory
     static CityHashState Create() {
         return CityHashState();
@@ -151,12 +153,12 @@ class CityHashState {
         return state_;
     }
 
-   private:
-    CityHashState() : state_(k2) {}  // Initial seed
+  private:
+    CityHashState() : state_(k2) {} // Initial seed
     uint64_t state_;
 };
 
-}  // namespace internal
-}  // namespace hmm
+} // namespace internal
+} // namespace hmm
 
-#endif  // HMM_HMM_INTERNAL_CITY_HASH_MIXERS_HPP
+#endif // HMM_HMM_INTERNAL_CITY_HASH_MIXERS_HPP

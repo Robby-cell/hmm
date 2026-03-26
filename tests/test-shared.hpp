@@ -8,7 +8,7 @@ namespace testing {
 namespace {
 
 struct BadHash {
-    size_t operator()(int) const {
+    size_t operator()(int /* dummy */) const {
         return 0;
     }
 };
@@ -48,8 +48,8 @@ struct LifecycleHasher {
     }
 };
 
-}  // namespace
-}  // namespace testing
-}  // namespace hmm
+} // namespace
+} // namespace testing
+} // namespace hmm
 
-#endif  // HMM_TESTS_TEST_SHARED_HPP
+#endif // HMM_TESTS_TEST_SHARED_HPP

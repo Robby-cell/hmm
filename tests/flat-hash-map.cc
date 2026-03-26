@@ -100,8 +100,8 @@ TEST(FlatHashMapTest, EraseByKey) {
         map[i] = i;
     }
 
-    EXPECT_EQ(map.erase(5), 1);   // Returns count of removed elements
-    EXPECT_EQ(map.erase(99), 0);  // Returns 0 if not found
+    EXPECT_EQ(map.erase(5), 1);  // Returns count of removed elements
+    EXPECT_EQ(map.erase(99), 0); // Returns 0 if not found
 
     EXPECT_EQ(map.find(5), map.end());
     EXPECT_EQ(map.size(), 9);
@@ -204,7 +204,7 @@ TEST(FlatHashMapTest, MassiveCollisions) {
     // Test erase in a high-collision environment
     map.erase(25);
     EXPECT_EQ(map.find(25), map.end());
-    EXPECT_EQ(map.at(26), 26);  // Ensure probing chain isn't broken
+    EXPECT_EQ(map.at(26), 26); // Ensure probing chain isn't broken
 }
 
 // =========================================================================

@@ -14,8 +14,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef HMM_HMM_INTERNAL_CITY_HASH_IMPL_HPP
-#define HMM_HMM_INTERNAL_CITY_HASH_IMPL_HPP
+#ifndef HMM_HMM_INTERNAL_CITY_HASH_IMPL_INL_HPP
+#define HMM_HMM_INTERNAL_CITY_HASH_IMPL_INL_HPP
 
 #include <cstdint>
 #include <cstring>
@@ -35,8 +35,6 @@ namespace internal {
 #define LIKELY(x) (x)
 #endif
 #endif
-
-namespace {
 
 inline uint64 Rotate(uint64 val, int shift) {
     return shift == 0 ? val : ((val >> shift) | (val << (64 - shift)));
@@ -80,33 +78,33 @@ inline uint64 HashLen16(uint64 u, uint64 v, uint64 mul) {
     return b;
 }
 
-uint64 HashLen0to16(const char* s, size_t len) {
+inline uint64 HashLen0to16(const char* s, size_t len) {
     if (len >= 8) {
-        uint64 mul = k2 + len * 2;
+        uint64 mul = k2 + (len * 2);
         uint64 a = Fetch64(s) + k2;
         uint64 b = Fetch64(s + len - 8);
-        uint64 c = Rotate(b, 37) * mul + a;
+        uint64 c = (Rotate(b, 37) * mul) + a;
         uint64 d = (Rotate(a, 25) + b) * mul;
         return HashLen16(c, d, mul);
     }
     if (len >= 4) {
-        uint64 mul = k2 + len * 2;
+        uint64 mul = k2 + (len * 2);
         uint64 a = Fetch32(s);
         return HashLen16(len + (a << 3), Fetch32(s + len - 4), mul);
     }
     if (len > 0) {
-        uint8_t a = static_cast<uint8_t>(s[0]);
-        uint8_t b = static_cast<uint8_t>(s[len >> 1]);
-        uint8_t c = static_cast<uint8_t>(s[len - 1]);
+        auto a = static_cast<uint8_t>(s[0]);
+        auto b = static_cast<uint8_t>(s[len >> 1]);
+        auto c = static_cast<uint8_t>(s[len - 1]);
         uint32 y = static_cast<uint32>(a) + (static_cast<uint32>(b) << 8);
         uint32 z = static_cast<uint32>(len) + (static_cast<uint32>(c) << 2);
-        return ShiftMix(y * k2 ^ z * k0) * k2;
+        return ShiftMix((y * k2) ^ (z * k0)) * k2;
     }
     return k2;
 }
 
-uint64 HashLen17to32(const char* s, size_t len) {
-    uint64 mul = k2 + len * 2;
+inline uint64 HashLen17to32(const char* s, size_t len) {
+    uint64 mul = k2 + (len * 2);
     uint64 a = Fetch64(s) * k1;
     uint64 b = Fetch64(s + 8);
     uint64 c = Fetch64(s + len - 8) * mul;
@@ -115,9 +113,9 @@ uint64 HashLen17to32(const char* s, size_t len) {
                      a + Rotate(b + k2, 18) + c, mul);
 }
 
-uint64 HashLen33to64(const char* s, size_t len) {
+inline uint64 HashLen33to64(const char* s, size_t len) {
     uint64 z = Fetch64(s + 24);
-    uint64 a = Fetch64(s) + (len + Fetch64(s + len - 16)) * k0;
+    uint64 a = Fetch64(s) + ((len + Fetch64(s + len - 16)) * k0);
     uint64 b = Rotate(a + z, 52);
     uint64 c = Rotate(a, 37);
     a += Fetch64(s + 8);
@@ -134,12 +132,13 @@ uint64 HashLen33to64(const char* s, size_t len) {
     a += Fetch64(s + len - 16);
     uint64 wf = a + z;
     uint64 ws = b + Rotate(a, 31) + c;
-    uint64 r = ShiftMix((vf + ws) * k2 + (wf + vs) * k0);
-    return ShiftMix(r * k0 + vs) * k2;
+    uint64 r = ShiftMix(((vf + ws) * k2) + ((wf + vs) * k0));
+    return ShiftMix((r * k0) + vs) * k2;
 }
 
-std::pair<uint64, uint64> WeakHashLen32WithSeeds(uint64 w, uint64 x, uint64 y,
-                                                 uint64 z, uint64 a, uint64 b) {
+inline std::pair<uint64, uint64> WeakHashLen32WithSeeds(uint64 w, uint64 x,
+                                                        uint64 y, uint64 z,
+                                                        uint64 a, uint64 b) {
     a += w;
     b = Rotate(b + a + z, 21);
     uint64 c = a;
@@ -149,25 +148,25 @@ std::pair<uint64, uint64> WeakHashLen32WithSeeds(uint64 w, uint64 x, uint64 y,
     return std::make_pair(a + z, b + c);
 }
 
-std::pair<uint64, uint64> WeakHashLen32WithSeeds(const char* s, uint64 a,
-                                                 uint64 b) {
+inline std::pair<uint64, uint64> WeakHashLen32WithSeeds(const char* s, uint64 a,
+                                                        uint64 b) {
     return WeakHashLen32WithSeeds(Fetch64(s), Fetch64(s + 8), Fetch64(s + 16),
                                   Fetch64(s + 24), a, b);
 }
 
-uint64 CityHash64WithSeeds(const char* s, size_t len, uint64 seed0,
-                           uint64 seed1) {
+inline uint64 CityHash64WithSeeds(const char* s, size_t len, uint64 seed0,
+                                  uint64 seed1) {
     return HashLen16(CityHash64(s, len) - seed0, seed1);
 }
 
-uint128 CityMurmur(const char* s, size_t len, uint128 seed) {
+inline uint128 CityMurmur(const char* s, size_t len, uint128 seed) {
     uint64 a = Uint128Low64(seed);
     uint64 b = Uint128High64(seed);
     uint64 c = 0;
     uint64 d = 0;
     if (len <= 16) {
         a = ShiftMix(a * k1) * k1;
-        c = b * k1 + HashLen0to16(s, len);
+        c = (b * k1) + HashLen0to16(s, len);
         d = ShiftMix(a + (len >= 8 ? Fetch64(s) : c));
     } else {
         c = HashLen16(Fetch64(s + len - 8) + k1, a);
@@ -189,8 +188,6 @@ uint128 CityMurmur(const char* s, size_t len, uint128 seed) {
     return uint128(a ^ b, HashLen16(b, a));
 }
 
-}  // namespace
-
 HMM_HASH_QUALIFIER uint64 CityHash64(const char* s, size_t len) {
     if (len <= 16) {
         return HashLen0to16(s, len);
@@ -208,7 +205,7 @@ HMM_HASH_QUALIFIER uint64 CityHash64(const char* s, size_t len) {
     std::pair<uint64, uint64> v = WeakHashLen32WithSeeds(s + len - 64, len, z);
     std::pair<uint64, uint64> w =
         WeakHashLen32WithSeeds(s + len - 32, y + k1, x);
-    x = x * k1 + Fetch64(s);
+    x = (x * k1) + Fetch64(s);
 
     len = (len - 1) & ~static_cast<size_t>(63);
     do {
@@ -223,7 +220,7 @@ HMM_HASH_QUALIFIER uint64 CityHash64(const char* s, size_t len) {
         s += 64;
         len -= 64;
     } while (len != 0);
-    return HashLen16(HashLen16(v.first, w.first) + ShiftMix(y) * k1 + z,
+    return HashLen16(HashLen16(v.first, w.first) + (ShiftMix(y) * k1) + z,
                      HashLen16(v.second, w.second) + x);
 }
 
@@ -246,13 +243,14 @@ HMM_HASH_QUALIFIER uint128 CityHash128WithSeed(const char* s, size_t len,
     }
 
     // v, w, x, y, and z.
-    std::pair<uint64, uint64> v, w;
+    std::pair<uint64, uint64> v;
+    std::pair<uint64, uint64> w;
     uint64 x = Uint128Low64(seed);
     uint64 y = Uint128High64(seed);
     uint64 z = len * k1;
-    v.first = Rotate(y ^ k1, 49) * k1 + Fetch64(s);
-    v.second = Rotate(v.first, 42) * k1 + Fetch64(s + 8);
-    w.first = Rotate(y + z, 35) * k1 + x;
+    v.first = (Rotate(y ^ k1, 49) * k1) + Fetch64(s);
+    v.second = (Rotate(v.first, 42) * k1) + Fetch64(s + 8);
+    w.first = (Rotate(y + z, 35) * k1) + x;
     w.second = Rotate(x + Fetch64(s + 88), 53) * k1;
 
     do {
@@ -277,15 +275,15 @@ HMM_HASH_QUALIFIER uint128 CityHash128WithSeed(const char* s, size_t len,
         len -= 128;
     } while (LIKELY(len >= 128));
     x += Rotate(v.first + z, 49) * k0;
-    y = y * k0 + Rotate(w.second, 37);
-    z = z * k0 + Rotate(w.first, 27);
+    y = (y * k0) + Rotate(w.second, 37);
+    z = (z * k0) + Rotate(w.first, 27);
     w.first *= 9;
     v.first *= k0;
     for (size_t tail_done = 0; tail_done < len;) {
         tail_done += 32;
-        y = Rotate(x + y, 42) * k0 + v.second;
+        y = (Rotate(x + y, 42) * k0) + v.second;
         w.first += Fetch64(s + len - tail_done + 16);
-        x = x * k0 + w.first;
+        x = (x * k0) + w.first;
         z += w.second + Fetch64(s + len - tail_done);
         w.second += v.first;
         v = WeakHashLen32WithSeeds(s + len - tail_done, v.first + z, v.second);
@@ -297,7 +295,7 @@ HMM_HASH_QUALIFIER uint128 CityHash128WithSeed(const char* s, size_t len,
                    HashLen16(x + w.second, y + v.second));
 }
 
-}  // namespace internal
-}  // namespace hmm
+} // namespace internal
+} // namespace hmm
 
-#endif  // HMM_HMM_INTERNAL_CITY_HASH_IMPL_HPP
+#endif // HMM_HMM_INTERNAL_CITY_HASH_IMPL_INL_HPP

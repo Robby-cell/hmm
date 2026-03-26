@@ -76,13 +76,13 @@ TEST(FlatHashSetTest, InsertReturnValue) {
 
     // First insert
     auto res1 = set.insert(10);
-    EXPECT_TRUE(res1.second);    // Success
-    EXPECT_EQ(*res1.first, 10);  // Iterator points to 10
+    EXPECT_TRUE(res1.second);   // Success
+    EXPECT_EQ(*res1.first, 10); // Iterator points to 10
 
     // Duplicate insert
     auto res2 = set.insert(10);
-    EXPECT_FALSE(res2.second);   // Failed (already exists)
-    EXPECT_EQ(*res2.first, 10);  // Iterator points to existing
+    EXPECT_FALSE(res2.second);  // Failed (already exists)
+    EXPECT_EQ(*res2.first, 10); // Iterator points to existing
 }
 
 TEST(FlatHashSetTest, Emplace) {
@@ -182,7 +182,7 @@ struct PointHasher {
         return std::hash<int>{}(p.x) ^ (std::hash<int>{}(p.y) << 1);
     }
 };
-}  // namespace
+} // namespace
 
 TEST(FlatHashSetTest, CustomKeyAndHasher) {
     flat_hash_set<Point, PointHasher> set;
@@ -244,7 +244,7 @@ TEST(FlatHashSetTest, MassiveCollisions) {
     set.erase(it);
 
     EXPECT_FALSE(set.contains(25));
-    EXPECT_TRUE(set.contains(26));  // Chain shouldn't break
+    EXPECT_TRUE(set.contains(26)); // Chain shouldn't break
 }
 
 // =========================================================================
@@ -258,8 +258,8 @@ TEST(FlatHashSetTest, IteratorTraversal) {
     }
 
     int sum = 0;
-    for (auto it = set.begin(); it != set.end(); ++it) {
-        sum += *it;
+    for (const auto& item : set) {
+        sum += item;
     }
     // Sum of 0..9 is 45
     EXPECT_EQ(sum, 45);
@@ -276,7 +276,7 @@ TEST(FlatHashSetTest, ObjectLifetimeAndLeaks) {
         flat_hash_set<LifecycleTracker, LifecycleHasher> set;
         set.emplace(10);
         set.emplace(20);
-        set.emplace(10);  // Duplicate
+        set.emplace(10); // Duplicate
 
         EXPECT_EQ(set.size(), 2);
     }
