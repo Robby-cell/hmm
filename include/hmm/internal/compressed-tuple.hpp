@@ -36,12 +36,12 @@ template <size_t... Ints> struct index_sequence {
     using type = index_sequence;
     using value_type = size_t;
 
-    static constexpr size_t size() noexcept {
+    static constexpr std::size_t size() noexcept {
         return sizeof...(Ints);
     }
 };
 
-template <size_t N, size_t... Next>
+template <std::size_t N, size_t... Next>
 struct make_index_sequence_impl
     : public make_index_sequence_impl<N - 1, N - 1, Next...> {};
 
@@ -49,14 +49,14 @@ template <size_t... Next> struct make_index_sequence_impl<0, Next...> {
     using type = index_sequence<Next...>;
 };
 
-template <size_t N>
+template <std::size_t N>
 using make_index_sequence = typename make_index_sequence_impl<N>::type;
 
 template <class... Ts>
 using index_sequence_for = make_index_sequence<sizeof...(Ts)>;
 #endif
 
-template <size_t Index, class T, class = void> struct TupleLeaf {
+template <std::size_t Index, class T, class = void> struct TupleLeaf {
   public:
     HMM_CONSTEXPR_14 T& get() & noexcept {
         return value_;
@@ -93,7 +93,7 @@ template <size_t Index, class T, class = void> struct TupleLeaf {
     T value_;
 };
 
-template <size_t Index, class T>
+template <std::size_t Index, class T>
 struct TupleLeaf<Index, T,
                  typename std::enable_if<std::is_empty<T>::value, int>::type>
     : T {
@@ -155,7 +155,7 @@ struct CompressedTupleImpl<index_sequence<Is...>, Ts...>
               static_cast<Args&&>(args)}... {}
 
   private:
-    template <size_t I, class Self>
+    template <std::size_t I, class Self>
     static HMM_CONSTEXPR_14 auto GetImpl(Self&& self) noexcept
         -> decltype(detail::forward_like<Self>(
             static_cast<Self&&>(self)
@@ -168,23 +168,23 @@ struct CompressedTupleImpl<index_sequence<Is...>, Ts...>
     }
 
   public:
-    template <size_t I>
+    template <std::size_t I>
     HMM_CONSTEXPR_14 auto get() & noexcept -> decltype(GetImpl<I>(*this)) {
         return GetImpl<I>(*this);
     }
 
-    template <size_t I>
+    template <std::size_t I>
     constexpr auto get() const& noexcept -> decltype(GetImpl<I>(*this)) {
         return GetImpl<I>(*this);
     }
 
-    template <size_t I>
+    template <std::size_t I>
     HMM_CONSTEXPR_14 auto get() && noexcept
         -> decltype(GetImpl<I>(std::move(*this))) {
         return GetImpl<I>(std::move(*this));
     }
 
-    template <size_t I>
+    template <std::size_t I>
     constexpr auto get() const&& noexcept
         -> decltype(GetImpl<I>(std::move(*this))) {
         return GetImpl<I>(std::move(*this));

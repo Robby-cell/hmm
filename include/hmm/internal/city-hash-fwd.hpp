@@ -46,14 +46,14 @@ constexpr uint64 k1 = 0xb492b66fbe98f273ULL;
 constexpr uint64 k2 = 0x9ae16a3b2f90404fULL;
 constexpr uint64 kMul = 0x9ddfea08eb382d69ULL;
 
-HMM_HASH_QUALIFIER uint64 CityHash64(const char* s, size_t len);
+HMM_HASH_QUALIFIER uint64 CityHash64(const char* s, std::size_t len);
 
-HMM_HASH_QUALIFIER uint64 CityHash64WithSeed(const char* s, size_t len,
+HMM_HASH_QUALIFIER uint64 CityHash64WithSeed(const char* s, std::size_t len,
                                              uint64 seed);
 
-HMM_HASH_QUALIFIER uint128 CityHash128(const char* s, size_t len);
+HMM_HASH_QUALIFIER uint128 CityHash128(const char* s, std::size_t len);
 
-HMM_HASH_QUALIFIER uint128 CityHash128WithSeed(const char* s, size_t len,
+HMM_HASH_QUALIFIER uint128 CityHash128WithSeed(const char* s, std::size_t len,
                                                uint128 seed);
 
 } // namespace internal

@@ -155,9 +155,9 @@ struct HeapPtrs {
 
 /// @brief Encapsulates the runtime sizing metrics of the hash set.
 struct SizeInfo {
-    size_t size_ = 0; ///< The number of active, constructed elements.
+    std::size_t size_ = 0; ///< The number of active, constructed elements.
 
-    size_t capacity_ =
+    std::size_t capacity_ =
         0; ///< The total number of allocated slots (must be a power of two).
 };
 
@@ -277,7 +277,7 @@ template <class Policy, class... TArgs> class raw_hash_set {
 
     using key_type = typename policy_type::key_type;
     using value_type = typename policy_type::value_type;
-    using size_type = size_t;
+    using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
     using slot_type = typename policy_type::slot_type;
 
@@ -298,7 +298,7 @@ template <class Policy, class... TArgs> class raw_hash_set {
   private:
     using Members = CommonMembers<hasher_type, key_equal, byte_allocator>;
 
-    static constexpr size_t kGroupWidth = Group::kWidth;
+    static constexpr std::size_t kGroupWidth = Group::kWidth;
 
   public:
     /// @brief The underlying iterator implementation.
@@ -403,9 +403,9 @@ template <class Policy, class... TArgs> class raw_hash_set {
     /// @brief Returned by internal insertion preparations, containing index
     /// routing data.
     struct HMM_NODISCARD FindInfo {
-        size_t index;     ///< The mapped slot index where the element exists
-                          ///< or should be inserted.
-        size_t full_hash; ///< The pre-computed full 64-bit hash.
+        std::size_t index; ///< The mapped slot index where the element exists
+                           ///< or should be inserted.
+        std::size_t full_hash; ///< The pre-computed full 64-bit hash.
         bool found; ///< True if the key already exists at the target index.
     };
 
@@ -603,13 +603,13 @@ template <class Policy, class... TArgs> class raw_hash_set {
 
         const auto full_hash = hasher()(key);
         const auto h2 = detail::H2(full_hash);
-        size_t index =
+        std::size_t index =
             detail::IndexWithoutProbing(detail::H1(full_hash), capacity());
 
         while (true) {
             Group g = Group::Load(ctrl_ptr() + index);
             for (BitMask mask = g.Match(h2); mask; ++mask) {
-                size_t probe_index =
+                std::size_t probe_index =
                     (index + mask.first_index()) & (capacity() - 1);
                 if (equal()(key, policy_type::key(slots_ptr()[probe_index]))) {
                     return iterator(ctrl_ptr() + probe_index,
@@ -636,13 +636,13 @@ template <class Policy, class... TArgs> class raw_hash_set {
         }
         const auto full_hash = hasher()(key);
         const auto h2 = detail::H2(full_hash);
-        size_t index =
+        std::size_t index =
             detail::IndexWithoutProbing(detail::H1(full_hash), capacity());
 
         while (true) {
             Group g = Group::Load(ctrl_ptr() + index);
             for (BitMask mask = g.Match(h2); mask; ++mask) {
-                size_t probe_index =
+                std::size_t probe_index =
                     (index + mask.first_index()) & (capacity() - 1);
                 if (equal()(key, policy_type::key(slots_ptr()[probe_index]))) {
                     return const_iterator(ctrl_ptr() + probe_index,
@@ -688,20 +688,20 @@ template <class Policy, class... TArgs> class raw_hash_set {
         }
 
         const auto h2 = detail::H2(full_hash);
-        size_t index =
+        std::size_t index =
             detail::IndexWithoutProbing(detail::H1(full_hash), capacity());
 
         while (true) {
             Group g = Group::Load(ctrl_ptr() + index);
             for (BitMask mask = g.Match(h2); mask; ++mask) {
-                size_t probe_index =
+                std::size_t probe_index =
                     (index + mask.first_index()) & (capacity() - 1);
                 if (equal()(key, policy_type::key(slots_ptr()[probe_index]))) {
                     return {probe_index, full_hash, true};
                 }
             }
             if (auto mask = g.MatchEmpty()) {
-                size_t probe_index =
+                std::size_t probe_index =
                     (index + mask.first_index()) & (capacity() - 1);
                 return {probe_index, full_hash, false};
             }
@@ -784,7 +784,7 @@ template <class Policy, class... TArgs> class raw_hash_set {
     /// @return An iterator to the element immediately following the removed
     /// element.
     HMM_CONSTEXPR_20 iterator erase(const_iterator cit) {
-        size_t index = cit.get_slots() - slots_ptr();
+        std::size_t index = cit.get_slots() - slots_ptr();
 
         policy_type::destroy(get_allocator(), &slots_ptr()[index]);
 
@@ -860,7 +860,7 @@ template <class Policy, class... TArgs> class raw_hash_set {
         members_.size_info_.size_ = 0;
 
         if (old_slots) {
-            for (size_t i = 0; i < old_cap; ++i) {
+            for (std::size_t i = 0; i < old_cap; ++i) {
                 if (old_ctrl[i] >= 0) {
                     auto& val = old_slots[i];
                     auto info = find_or_prepare_insert(policy_type::key(val));
@@ -877,14 +877,15 @@ template <class Policy, class... TArgs> class raw_hash_set {
 
     /// @brief Internal Hook: Given a guaranteed index and hash, constructs the
     /// element into the slot array.
-    void insert_at_index(size_t index, size_t full_hash, slot_type&& val) {
+    void insert_at_index(std::size_t index, std::size_t full_hash,
+                         slot_type&& val) {
         policy_type::construct(get_allocator(), &slots_ptr()[index],
                                std::move(val));
         finish_insert(index, full_hash);
     }
 
     /// @brief Commits an insertion by updating the control byte metadata array.
-    void finish_insert(size_t index, size_t full_hash) {
+    void finish_insert(std::size_t index, std::size_t full_hash) {
         auto h2 = detail::H2(full_hash);
         ctrl_ptr()[index] = h2;
         if (index < kGroupWidth) {
@@ -897,10 +898,11 @@ template <class Policy, class... TArgs> class raw_hash_set {
     /// @details Safely computes alignments and buffer sizes to house both
     /// metadata bytes and strictly aligned elements in one allocation block.
     HMM_CONSTEXPR_20 void allocate_storage(const size_type cap) {
-        size_t ctrl_size = cap + kGroupWidth;
-        size_t slot_align = alignof(slot_type);
-        size_t slot_offset = (ctrl_size + slot_align - 1) & ~(slot_align - 1);
-        size_t total_bytes = slot_offset + (cap * sizeof(slot_type));
+        std::size_t ctrl_size = cap + kGroupWidth;
+        std::size_t slot_align = alignof(slot_type);
+        std::size_t slot_offset =
+            (ctrl_size + slot_align - 1) & ~(slot_align - 1);
+        std::size_t total_bytes = slot_offset + (cap * sizeof(slot_type));
 
         unsigned char* ptr = std::allocator_traits<byte_allocator>::allocate(
             get_allocator(), total_bytes);
@@ -914,10 +916,11 @@ template <class Policy, class... TArgs> class raw_hash_set {
     /// allocator.
     HMM_CONSTEXPR_20 void deallocate_storage(ctrl_t* ctrl_pointer,
                                              const size_type cap) {
-        size_t ctrl_size = cap + kGroupWidth;
-        size_t slot_align = alignof(slot_type);
-        size_t slot_offset = (ctrl_size + slot_align - 1) & ~(slot_align - 1);
-        size_t total_bytes = slot_offset + (cap * sizeof(slot_type));
+        std::size_t ctrl_size = cap + kGroupWidth;
+        std::size_t slot_align = alignof(slot_type);
+        std::size_t slot_offset =
+            (ctrl_size + slot_align - 1) & ~(slot_align - 1);
+        std::size_t total_bytes = slot_offset + (cap * sizeof(slot_type));
 
         std::allocator_traits<byte_allocator>::deallocate(
             get_allocator(), reinterpret_cast<unsigned char*>(ctrl_pointer),
@@ -927,7 +930,7 @@ template <class Policy, class... TArgs> class raw_hash_set {
     /// @brief Invokes destructors on all actively tracked elements using the
     /// allocator traits.
     HMM_CONSTEXPR_20 void clear_elements() {
-        for (size_t i = 0; i < capacity(); ++i) {
+        for (std::size_t i = 0; i < capacity(); ++i) {
             if (ctrl_ptr()[i] >= 0) {
                 policy_type::destroy(get_allocator(), &slots_ptr()[i]);
             }

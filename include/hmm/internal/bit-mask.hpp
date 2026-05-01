@@ -86,7 +86,7 @@ struct Group {
     uint64_t data[2]; // Fallback
 #endif
 
-    static constexpr size_t kWidth = 16;
+    static constexpr std::size_t kWidth = 16;
 
     // Load 16 bytes from memory (potentially unaligned)
     static Group Load(const int8_t* ptr) {
@@ -121,7 +121,7 @@ struct Group {
 #else
         uint32_t mask = 0;
         const int8_t* bytes = reinterpret_cast<const int8_t*>(&data);
-        for (size_t i = 0; i < 16; ++i) {
+        for (std::size_t i = 0; i < 16; ++i) {
             if (bytes[i] == h2) {
                 mask |= (1 << i);
             }
@@ -139,7 +139,7 @@ struct Group {
 #else
         uint32_t mask = 0;
         const int8_t* bytes = reinterpret_cast<const int8_t*>(&data);
-        for (size_t i = 0; i < 16; ++i) {
+        for (std::size_t i = 0; i < 16; ++i) {
             if (bytes[i] == static_cast<int8_t>(-128)) {
                 mask |= (1 << i);
             }

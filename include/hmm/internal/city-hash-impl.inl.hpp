@@ -78,7 +78,7 @@ inline uint64 HashLen16(uint64 u, uint64 v, uint64 mul) {
     return b;
 }
 
-inline uint64 HashLen0to16(const char* s, size_t len) {
+inline uint64 HashLen0to16(const char* s, std::size_t len) {
     if (len >= 8) {
         uint64 mul = k2 + (len * 2);
         uint64 a = Fetch64(s) + k2;
@@ -103,7 +103,7 @@ inline uint64 HashLen0to16(const char* s, size_t len) {
     return k2;
 }
 
-inline uint64 HashLen17to32(const char* s, size_t len) {
+inline uint64 HashLen17to32(const char* s, std::size_t len) {
     uint64 mul = k2 + (len * 2);
     uint64 a = Fetch64(s) * k1;
     uint64 b = Fetch64(s + 8);
@@ -113,7 +113,7 @@ inline uint64 HashLen17to32(const char* s, size_t len) {
                      a + Rotate(b + k2, 18) + c, mul);
 }
 
-inline uint64 HashLen33to64(const char* s, size_t len) {
+inline uint64 HashLen33to64(const char* s, std::size_t len) {
     uint64 z = Fetch64(s + 24);
     uint64 a = Fetch64(s) + ((len + Fetch64(s + len - 16)) * k0);
     uint64 b = Rotate(a + z, 52);
@@ -154,12 +154,12 @@ inline std::pair<uint64, uint64> WeakHashLen32WithSeeds(const char* s, uint64 a,
                                   Fetch64(s + 24), a, b);
 }
 
-inline uint64 CityHash64WithSeeds(const char* s, size_t len, uint64 seed0,
+inline uint64 CityHash64WithSeeds(const char* s, std::size_t len, uint64 seed0,
                                   uint64 seed1) {
     return HashLen16(CityHash64(s, len) - seed0, seed1);
 }
 
-inline uint128 CityMurmur(const char* s, size_t len, uint128 seed) {
+inline uint128 CityMurmur(const char* s, std::size_t len, uint128 seed) {
     uint64 a = Uint128Low64(seed);
     uint64 b = Uint128High64(seed);
     uint64 c = 0;
@@ -188,7 +188,7 @@ inline uint128 CityMurmur(const char* s, size_t len, uint128 seed) {
     return uint128(a ^ b, HashLen16(b, a));
 }
 
-HMM_HASH_QUALIFIER uint64 CityHash64(const char* s, size_t len) {
+HMM_HASH_QUALIFIER uint64 CityHash64(const char* s, std::size_t len) {
     if (len <= 16) {
         return HashLen0to16(s, len);
     }
@@ -224,19 +224,19 @@ HMM_HASH_QUALIFIER uint64 CityHash64(const char* s, size_t len) {
                      HashLen16(v.second, w.second) + x);
 }
 
-HMM_HASH_QUALIFIER uint64 CityHash64WithSeed(const char* s, size_t len,
+HMM_HASH_QUALIFIER uint64 CityHash64WithSeed(const char* s, std::size_t len,
                                              uint64 seed) {
     return CityHash64WithSeeds(s, len, k2, seed);
 }
 
-HMM_HASH_QUALIFIER uint128 CityHash128(const char* s, size_t len) {
+HMM_HASH_QUALIFIER uint128 CityHash128(const char* s, std::size_t len) {
     return len >= 16
                ? CityHash128WithSeed(s + 16, len - 16,
                                      uint128(Fetch64(s), Fetch64(s + 8) + k0))
                : CityHash128WithSeed(s, len, uint128(k0, k1));
 }
 
-HMM_HASH_QUALIFIER uint128 CityHash128WithSeed(const char* s, size_t len,
+HMM_HASH_QUALIFIER uint128 CityHash128WithSeed(const char* s, std::size_t len,
                                                uint128 seed) {
     if (len < 128) {
         return CityMurmur(s, len, seed);
@@ -279,7 +279,7 @@ HMM_HASH_QUALIFIER uint128 CityHash128WithSeed(const char* s, size_t len,
     z = (z * k0) + Rotate(w.first, 27);
     w.first *= 9;
     v.first *= k0;
-    for (size_t tail_done = 0; tail_done < len;) {
+    for (std::size_t tail_done = 0; tail_done < len;) {
         tail_done += 32;
         y = (Rotate(x + y, 42) * k0) + v.second;
         w.first += Fetch64(s + len - tail_done + 16);

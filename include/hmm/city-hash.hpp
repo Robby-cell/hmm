@@ -23,7 +23,8 @@
 namespace hmm {
 
 template <typename T> struct CityHash {
-    HMM_STATIC_CALL size_t operator()(const T& value) HMM_STATIC_CALL_CONST {
+    HMM_STATIC_CALL std::size_t
+    operator()(const T& value) HMM_STATIC_CALL_CONST {
         return internal::CityHashState::combine(
                    internal::CityHashState::Create(), value)
             .finalize();
@@ -33,7 +34,8 @@ template <typename T> struct CityHash {
 // Void specialization (often used in transparent comparators/hashers)
 template <> struct CityHash<void> {
     template <typename T>
-    HMM_STATIC_CALL size_t operator()(const T& value) HMM_STATIC_CALL_CONST {
+    HMM_STATIC_CALL std::size_t
+    operator()(const T& value) HMM_STATIC_CALL_CONST {
         return CityHash<T>{}(value);
     }
 };

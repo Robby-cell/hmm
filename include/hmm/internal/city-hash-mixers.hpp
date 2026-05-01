@@ -135,7 +135,7 @@ class CityHashState {
 
     // Mix arbitrary bytes (Used for objects with unique representation)
     static CityHashState combine_bytes(CityHashState h, const void* ptr,
-                                       size_t len) {
+                                       std::size_t len) {
         h.state_ =
             CityHash64WithSeed(static_cast<const char*>(ptr), len, h.state_);
         return h;
@@ -144,7 +144,7 @@ class CityHashState {
     // Contiguous optimization (Used for vector, string, array)
     template <typename T>
     static CityHashState combine_contiguous(CityHashState h, const T* ptr,
-                                            size_t count) {
+                                            std::size_t count) {
         return combine_bytes(std::move(h), ptr, count * sizeof(T));
     }
 
